@@ -1,11 +1,16 @@
 # Third-Party Notices
 
+## YDP Grand Piano SoundFont
+
+The default **Grand** piano uses **YDP Grand Piano** (2016-08-04) from the FreePats project.
+It is built from Zenph Studios Yamaha Disklavier Pro multisamples.
+
+- Project: https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html
+- License: Creative Commons Attribution 3.0
+
 ## GeneralUser GS SoundFont
 
-Bundled instruments are rendered from **GeneralUser GS v1.471** by S. Christian Collins
-into per-instrument WAV files at build time (`scripts/export_instruments.py`).
-The source SoundFont (`GeneralUser-GS.sf2`) is kept in the repository for regeneration
-but is not shipped inside the app bundle.
+Other bundled instruments use **GeneralUser GS v1.471** by S. Christian Collins.
 
 - Project: https://github.com/mrbumpy409/GeneralUser-GS
 - License: see `CustomSoundBank/Resources/SoundBanks/LICENSE.txt`

@@ -5,7 +5,12 @@ struct ContentView: View {
         TabView {
             PerformView()
                 .tabItem {
-                    Label("Perform", systemImage: "pianokeys")
+                    Label("Live", systemImage: "bolt.fill")
+                }
+
+            BrowsePadsView()
+                .tabItem {
+                    Label("Samples", systemImage: "square.grid.3x3")
                 }
 
             CreateSampleView()

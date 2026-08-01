@@ -32,7 +32,7 @@ If recording fails while the iRig is attached:
 
 | Symptom | Check |
 | --- | --- |
-| No MIDI input | Controller is sending on the selected channel; cable is in MIDI IN, not OUT |
+| No MIDI input | Set channel to **All** or match your keyboard's transmit channel; pick the correct device under **Input Device**; cable in MIDI IN |
 | No sound at speaker | iRig output volume; cable into powered speaker or mixer line input |
 | High latency | Close background apps; keep sample rate at 44.1 kHz |
 | Stuck notes | Tap **All Notes Off** on the Perform screen |

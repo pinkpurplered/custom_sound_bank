@@ -15,8 +15,10 @@ final class SampleVoicePool {
     private var activeVoices: [ActiveVoice] = []
     private var sampleBuffer: AVAudioPCMBuffer?
     private var rootNote: UInt8 = 60
-    private var sustainDown = false
-    private var sustainedNotes = Set<UInt8>()
+    private var pitchBendCents: Float = 0
+    private var modulation: Float = 0
+    private var vibratoOffset: Float = 0
+    private var modulationTask: Task<Void, Never>?
 
     init(engine: AVAudioEngine, mixer: AVAudioMixerNode, maxVoices: Int = 16) {
         self.engine = engine
@@ -25,7 +27,9 @@ final class SampleVoicePool {
         buildPool()
     }
 
-    var node: AVAudioNode { mixer }
+    deinit {
+        modulationTask?.cancel()
+    }
 
     func load(sample: UserSampleInstrument, from url: URL) throws {
         let file = try AVAudioFile(forReading: url)
@@ -45,8 +49,7 @@ final class SampleVoicePool {
         trimmed.frameLength = trimmedLength
 
         if let src = buffer.floatChannelData, let dst = trimmed.floatChannelData {
-            let channelCount = Int(format.channelCount)
-            for channel in 0..<channelCount {
+            for channel in 0..<Int(format.channelCount) {
                 let source = src[channel].advanced(by: Int(startFrame))
                 dst[channel].update(from: source, count: Int(trimmedLength))
             }
@@ -57,44 +60,45 @@ final class SampleVoicePool {
         allNotesOff()
     }
 
+    func setModulation(_ value: Float) {
+        modulation = max(0, min(1, value))
+        if modulation > 0 {
+            startModulationLFO()
+        } else {
+            modulationTask?.cancel()
+            modulationTask = nil
+            vibratoOffset = 0
+            updateActiveVoicePitches()
+        }
+    }
+
+    func setPitchBend(_ normalized: Float) {
+        pitchBendCents = MIDIUtilities.pitchBendCents(from: normalized)
+        updateActiveVoicePitches()
+    }
+
     func noteOn(note: UInt8, velocity: UInt8) {
         guard let sampleBuffer else { return }
-        sustainedNotes.remove(note)
-
-        if activeVoices.count >= maxVoices {
-            releaseOldestVoice()
-        }
-
+        if activeVoices.count >= maxVoices { releaseOldestVoice() }
         guard let voice = pool.popLast() else { return }
-        voice.pitch.pitch = MIDIUtilities.transpositionCents(from: rootNote, to: note)
+        voice.pitch.pitch = pitchFor(note: note)
         voice.player.volume = MIDIUtilities.clampVelocity(velocity)
         voice.player.stop()
         voice.player.scheduleBuffer(sampleBuffer, at: nil, options: [], completionHandler: nil)
         voice.player.play()
-
         activeVoices.append(ActiveVoice(note: note, player: voice.player, pitch: voice.pitch))
     }
 
     func noteOff(note: UInt8) {
-        if sustainDown {
-            sustainedNotes.insert(note)
-            return
-        }
-        stop(note: note)
-    }
-
-    func setSustain(_ isDown: Bool) {
-        sustainDown = isDown
-        if !isDown {
-            let notes = sustainedNotes
-            sustainedNotes.removeAll()
-            notes.forEach { stop(note: $0) }
+        let matches = activeVoices.filter { $0.note == note }
+        activeVoices.removeAll { $0.note == note }
+        for voice in matches {
+            voice.player.stop()
+            returnVoice(player: voice.player, pitch: voice.pitch)
         }
     }
 
     func allNotesOff() {
-        sustainedNotes.removeAll()
-        sustainDown = false
         let voices = activeVoices
         activeVoices.removeAll()
         for voice in voices {
@@ -103,12 +107,28 @@ final class SampleVoicePool {
         }
     }
 
-    private func stop(note: UInt8) {
-        let matches = activeVoices.filter { $0.note == note }
-        activeVoices.removeAll { $0.note == note }
-        for voice in matches {
-            voice.player.stop()
-            returnVoice(player: voice.player, pitch: voice.pitch)
+    private func pitchFor(note: UInt8) -> Float {
+        MIDIUtilities.transpositionCents(from: rootNote, to: note) + pitchBendCents + vibratoOffset
+    }
+
+    private func updateActiveVoicePitches() {
+        for voice in activeVoices {
+            voice.pitch.pitch = pitchFor(note: voice.note)
+        }
+    }
+
+    private func startModulationLFO() {
+        guard modulationTask == nil else { return }
+        modulationTask = Task { [weak self] in
+            var phase: Float = 0
+            while !Task.isCancelled {
+                guard let self else { return }
+                let depth = self.modulation * 50
+                self.vibratoOffset = sin(phase) * depth
+                self.updateActiveVoicePitches()
+                phase += 0.35
+                try? await Task.sleep(for: .milliseconds(20))
+            }
         }
     }
 

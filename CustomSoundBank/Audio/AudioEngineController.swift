@@ -9,8 +9,6 @@ final class AudioEngineController: ObservableObject {
         sampleRate: 44_100,
         isExternalOutput: false
     )
-    @Published private(set) var isRunning = false
-    @Published private(set) var lastError: String?
 
     let engine = AVAudioEngine()
     let mainMixer = AVAudioMixerNode()
@@ -25,20 +23,23 @@ final class AudioEngineController: ObservableObject {
     }
 
     func start() throws {
-        try configureSessionForPerformance()
-        try startEngineIfNeeded()
-        refreshRouteSnapshot()
-    }
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
+        try session.setPreferredSampleRate(44_100)
+        try session.setPreferredIOBufferDuration(0.005)
+        try session.setActive(true)
 
-    func startForRecording() throws {
-        try configureSessionForRecording()
-        try startEngineIfNeeded()
+        guard !engine.isRunning else {
+            refreshRouteSnapshot()
+            return
+        }
+        engine.prepare()
+        try engine.start()
         refreshRouteSnapshot()
     }
 
     func stop() {
         engine.stop()
-        isRunning = false
     }
 
     func setMasterVolume(_ volume: Float) {
@@ -61,18 +62,10 @@ final class AudioEngineController: ObservableObject {
 
     func mutateGraph(_ mutation: () throws -> Void) throws {
         let wasRunning = engine.isRunning
-        if wasRunning {
-            engine.stop()
-            isRunning = false
-        }
-
+        if wasRunning { engine.stop() }
         try mutation()
-
         engine.prepare()
-        if wasRunning {
-            try engine.start()
-            isRunning = true
-        }
+        if wasRunning { try engine.start() }
     }
 
     func connectInstrument(_ node: AVAudioNode) throws {
@@ -88,25 +81,12 @@ final class AudioEngineController: ObservableObject {
             }
 
             let outputs = engine.outputConnectionPoints(for: node, outputBus: 0)
-            let connectedToMainMixer = outputs.contains { $0.node === mainMixer }
-            if !connectedToMainMixer {
+            if !outputs.contains(where: { $0.node === mainMixer }) {
                 engine.connect(node, to: mainMixer, format: nil)
             }
 
             connectedInstrumentRoot = node
         }
-    }
-
-    func replaceOutputNode(_ node: AVAudioNode) {
-        for attached in engine.attachedNodes where attached !== mainMixer && attached !== engine.outputNode {
-            if attached is AVAudioUnitSampler || attached is AVAudioPlayerNode {
-                engine.disconnectNodeOutput(attached)
-            }
-        }
-        if !engine.attachedNodes.contains(node) {
-            engine.attach(node)
-        }
-        engine.connect(node, to: mainMixer, format: nil)
     }
 
     func installObservers(onInterruption: @escaping () -> Void, onRouteChange: @escaping () -> Void) {
@@ -129,9 +109,7 @@ final class AudioEngineController: ObservableObject {
             forName: AVAudioSession.routeChangeNotification,
             object: nil,
             queue: .main
-        ) { _ in
-            onRouteChange()
-        }
+        ) { _ in onRouteChange() }
     }
 
     func refreshRouteSnapshot() {
@@ -147,35 +125,5 @@ final class AudioEngineController: ObservableObject {
             sampleRate: session.sampleRate,
             isExternalOutput: external
         )
-    }
-
-    private func configureSessionForPerformance() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
-        try session.setPreferredSampleRate(44_100)
-        try session.setPreferredIOBufferDuration(0.005)
-        try session.setActive(true)
-    }
-
-    private func configureSessionForRecording() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
-        try session.setPreferredSampleRate(44_100)
-        try session.setActive(true)
-
-        if let builtInMic = session.availableInputs?.first(where: { $0.portType == .builtInMic }) {
-            try session.setPreferredInput(builtInMic)
-        }
-    }
-
-    private func startEngineIfNeeded() throws {
-        guard !engine.isRunning else {
-            isRunning = true
-            return
-        }
-        engine.prepare()
-        try engine.start()
-        isRunning = true
-        lastError = nil
     }
 }

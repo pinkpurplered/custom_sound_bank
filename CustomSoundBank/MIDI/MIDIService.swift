@@ -2,17 +2,45 @@ import Foundation
 import CoreMIDI
 import Combine
 
+private final class MIDIPortReadContext: @unchecked Sendable {
+    var onEvent: ((MIDINoteEvent) -> Void)?
+
+    func deliver(_ events: [MIDINoteEvent]) {
+        guard let onEvent else { return }
+        for event in events {
+            onEvent(event)
+        }
+    }
+}
+
 @MainActor
 final class MIDIService: ObservableObject {
     @Published private(set) var sources: [MIDISourceSnapshot] = []
     @Published private(set) var connectedSourceName: String?
     @Published private(set) var lastError: String?
+    @Published private(set) var receivedEventCount = 0
+    @Published private(set) var lastReceivedEventDescription: String?
 
-    var onEvent: ((MIDINoteEvent) -> Void)?
+    var onEvent: ((MIDINoteEvent) -> Void)? {
+        get { readContext.onEvent }
+        set {
+            if let newValue {
+                readContext.onEvent = { [weak self] event in
+                    newValue(event)
+                    Task { @MainActor [weak self] in
+                        self?.recordReceivedEvent(event)
+                    }
+                }
+            } else {
+                readContext.onEvent = nil
+            }
+        }
+    }
 
     private var client = MIDIClientRef()
     private var inputPort = MIDIPortRef()
     private var connectedSource: MIDIEndpointRef?
+    private let readContext = MIDIPortReadContext()
 
     init() {
         setupClient()
@@ -42,11 +70,11 @@ final class MIDIService: ObservableObject {
     }
 
     func connectFirstAvailableSource() {
-        guard let first = sources.first else {
+        guard let preferred = Self.preferredSource(from: sources) ?? sources.first else {
             connectedSourceName = nil
             return
         }
-        connect(toEndpointID: first.id)
+        connect(toEndpointID: preferred.id)
     }
 
     func connect(toEndpointID id: String) {
@@ -85,21 +113,58 @@ final class MIDIService: ObservableObject {
             return
         }
 
+        let readContext = self.readContext
         let portStatus = MIDIInputPortCreateWithProtocol(
             client,
             "CustomSoundBankInput" as CFString,
-            MIDIProtocolID._1_0,
+            ._1_0,
             &inputPort
-        ) { [weak self] eventList, _ in
-            guard let self else { return }
+        ) { eventList, _ in
             let events = MIDIEventDecoder.decode(eventList: eventList)
-            for event in events {
-                self.onEvent?(event)
-            }
+            readContext.deliver(events)
         }
 
         if portStatus != noErr {
-            lastError = "Failed to create MIDI input port (\(portStatus))"
+            let refCon = Unmanaged.passUnretained(readContext).toOpaque()
+            let legacyStatus = MIDIInputPortCreate(
+                client,
+                "CustomSoundBankInput" as CFString,
+                Self.legacyMidiReadProc,
+                refCon,
+                &inputPort
+            )
+            if legacyStatus != noErr {
+                lastError = "Failed to create MIDI input port (\(legacyStatus))"
+            }
+        }
+    }
+
+    private static let legacyMidiReadProc: MIDIReadProc = { packetList, _, refCon in
+        guard let refCon else { return }
+        let context = Unmanaged<MIDIPortReadContext>.fromOpaque(refCon).takeUnretainedValue()
+        let events = MIDIEventDecoder.decode(packetList: packetList)
+        context.deliver(events)
+    }
+
+    private func recordReceivedEvent(_ event: MIDINoteEvent) {
+        receivedEventCount += 1
+        lastReceivedEventDescription = Self.describe(event)
+    }
+
+    private static func describe(_ event: MIDINoteEvent) -> String {
+        switch event.kind {
+        case .noteOn(let note, let velocity):
+            return "Ch \(event.channel) Note On \(MIDIUtilities.noteName(for: note)) (\(velocity))"
+        case .noteOff(let note, _):
+            return "Ch \(event.channel) Note Off \(MIDIUtilities.noteName(for: note))"
+        case .sustain(let isDown):
+            return "Ch \(event.channel) Sustain \(isDown ? "On" : "Off")"
+        case .modulation(let value):
+            return "Ch \(event.channel) Modulation \(value)"
+        case .pitchBend(let value):
+            return "Ch \(event.channel) Pitch Bend \(value)"
+        case .allNotesOff:
+            return "Ch \(event.channel) All Notes Off"
         }
     }
 
@@ -107,12 +172,34 @@ final class MIDIService: ObservableObject {
         switch notification.pointee.messageID {
         case .msgSetupChanged, .msgObjectAdded, .msgObjectRemoved:
             refreshSources()
-            if connectedSource == nil {
+            if let preferred = Self.preferredSource(from: sources) {
+                let preferredEndpoint = MIDIEndpointRef(UInt32(preferred.id) ?? 0)
+                if connectedSource == nil || connectedSource != preferredEndpoint {
+                    connect(toEndpointID: preferred.id)
+                }
+            } else if connectedSource == nil {
                 connectFirstAvailableSource()
             }
         default:
             break
         }
+    }
+
+    private static func preferredSource(from sources: [MIDISourceSnapshot]) -> MIDISourceSnapshot? {
+        let ranked = sources.sorted { lhs, rhs in
+            score(for: lhs.name) > score(for: rhs.name)
+        }
+        return ranked.first
+    }
+
+    private static func score(for sourceName: String) -> Int {
+        let name = sourceName.lowercased()
+        var score = 0
+        if name.contains("irig") { score += 100 }
+        if name.contains("midi") { score += 50 }
+        if name.contains("keyboard") || name.contains("piano") { score += 25 }
+        if name.contains("network") || name.contains("session") { score -= 100 }
+        return score
     }
 
     private static func endpointName(_ endpoint: MIDIEndpointRef) -> String? {

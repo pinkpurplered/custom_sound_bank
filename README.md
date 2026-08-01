@@ -8,7 +8,7 @@ Native SwiftUI iPhone app that turns a MIDI controller into a customizable sound
 
 ## Features (MVP)
 
-- Six bundled instruments: piano, strings, organ, music box, synth lead, synth pad
+- 36 bundled instruments across six categories (piano, strings, organ, music box, synth lead, synth pad)
 - Core MIDI input with note on/off, velocity, sustain pedal, and channel filtering
 - Low-latency `AVAudioEngine` output routed to the active iOS audio device
 - Record short samples from the iPhone microphone
@@ -44,7 +44,7 @@ Device acceptance checks are documented in [docs/TEST_MATRIX.md](docs/TEST_MATRI
 
 ## Sound assets
 
-Bundled WAV presets in `CustomSoundBank/Resources/SoundBanks/` are MVP placeholder tones generated for development. Replace them with royalty-free multisamples or SF2/DLS programs before release and update [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Bundled instruments use SF2 soundfonts in `CustomSoundBank/Resources/SoundBanks/`. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for licensing.
 
 ## Regenerate Xcode project
 
