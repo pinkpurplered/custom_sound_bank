@@ -1,24 +1,16 @@
 # Third-Party Notices
 
-## Bundled development samples
+## Apple General MIDI sound bank
 
-The WAV files in `CustomSoundBank/Resources/SoundBanks/` were generated locally for MVP development and are owned by this project. Replace them with properly licensed multisample libraries or SoundFont/DLS banks before App Store distribution.
+Bundled instruments load programs from the system General MIDI DLS bank
+(`gs_instruments.dls`) through `AVAudioUnitSampler`. This bank is provided by
+Apple as part of iOS and is subject to the Apple SDK / platform license.
 
 ## Apple frameworks
 
-This app uses Apple system frameworks including AVFoundation, Core MIDI, and SwiftUI under the Apple SDK license.
+This app uses Apple system frameworks including AVFoundation, AudioToolbox,
+Core MIDI, and SwiftUI under the Apple SDK license.
 
-## Recommended replacement assets
+## Custom recordings
 
-When moving beyond MVP, source royalty-free or commercially licensed instrument libraries from providers such as:
-
-- Versilian Studios Community Sample Library
-- Philharmonia Orchestra Creative Commons samples
-- Licensed SoundFont collections cleared for redistribution
-
-Document each replacement asset here with:
-
-- Asset name
-- Source URL
-- License type
-- Attribution text (if required)
+User-recorded samples are created on-device and remain the property of the user.

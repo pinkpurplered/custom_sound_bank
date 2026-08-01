@@ -18,5 +18,6 @@ struct ContentView: View {
                     Label("Library", systemImage: "square.stack.3d.up")
                 }
         }
+        .tint(AppTheme.accent)
     }
 }

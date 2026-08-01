@@ -1,8 +1,12 @@
+import AudioToolbox
 import AVFoundation
 import Foundation
 
 @MainActor
 final class BundledInstrumentSampler {
+    private static let generalMIDIBankPath =
+        "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls"
+
     private let sampler = AVAudioUnitSampler()
     private var loadedKind: InstrumentKind?
 
@@ -12,21 +16,25 @@ final class BundledInstrumentSampler {
         engine.attach(node: sampler)
         guard loadedKind != kind else { return }
 
-        guard let fileName = kind.bundledFileName else {
+        guard let program = kind.gmProgram else {
             throw NSError(domain: "BundledInstrumentSampler", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "No bundled asset for \(kind.displayName)"
+                NSLocalizedDescriptionKey: "No instrument program for \(kind.displayName)"
             ])
         }
 
-        guard let url = Bundle.main.url(forResource: fileName, withExtension: "wav", subdirectory: "SoundBanks")
-            ?? Bundle.main.url(forResource: fileName, withExtension: "wav", subdirectory: "Resources/SoundBanks")
-            ?? Bundle.main.url(forResource: fileName, withExtension: "wav") else {
+        let bankURL = URL(fileURLWithPath: Self.generalMIDIBankPath)
+        guard FileManager.default.fileExists(atPath: bankURL.path) else {
             throw NSError(domain: "BundledInstrumentSampler", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "Missing bundled sample \(fileName).wav"
+                NSLocalizedDescriptionKey: "System General MIDI bank is unavailable."
             ])
         }
 
-        try sampler.loadAudioFiles(at: [url])
+        try sampler.loadSoundBankInstrument(
+            at: bankURL,
+            program: program,
+            bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
+            bankLSB: UInt8(kAUSampler_DefaultBankLSB)
+        )
         loadedKind = kind
     }
 

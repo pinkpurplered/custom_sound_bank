@@ -23,15 +23,27 @@ enum InstrumentKind: String, CaseIterable, Identifiable, Codable, Sendable {
         }
     }
 
-    var bundledFileName: String? {
+    var gmProgram: UInt8? {
         switch self {
-        case .piano: return "piano"
-        case .strings: return "strings"
-        case .organ: return "organ"
-        case .musicBox: return "musicbox"
-        case .synthLead: return "synth_lead"
-        case .synthPad: return "synth_pad"
+        case .piano: return 0
+        case .strings: return 48
+        case .organ: return 19
+        case .musicBox: return 10
+        case .synthLead: return 81
+        case .synthPad: return 89
         case .userSample: return nil
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .piano: return "pianokeys"
+        case .strings: return "music.quarternote.3"
+        case .organ: return "chart.bar.doc.horizontal"
+        case .musicBox: return "music.note"
+        case .synthLead: return "waveform.path"
+        case .synthPad: return "cloud.fill"
+        case .userSample: return "mic.fill"
         }
     }
 
