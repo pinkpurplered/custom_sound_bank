@@ -20,17 +20,15 @@ final class InstrumentRouter: ObservableObject {
     }
 
     func selectBundled(_ kind: InstrumentKind) {
-        Task {
-            do {
-                guard let audioEngine else { return }
-                try bundledSampler.load(kind: kind, into: audioEngine)
-                audioEngine.replaceOutputNode(bundledSampler.node)
-                selectedInstrument = .bundled(kind)
-                allNotesOff()
-                lastError = nil
-            } catch {
-                lastError = error.localizedDescription
-            }
+        do {
+            guard let audioEngine else { return }
+            try bundledSampler.load(kind: kind, into: audioEngine)
+            try audioEngine.connectInstrument(bundledSampler.node)
+            selectedInstrument = .bundled(kind)
+            allNotesOff()
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
         }
     }
 
@@ -42,7 +40,7 @@ final class InstrumentRouter: ObservableObject {
                     userVoicePool = UserSampleVoicePool(engine: audioEngine.engine, mixer: userMixer)
                 }
                 try userVoicePool?.load(sample: sample, from: fileURL)
-                audioEngine.replaceOutputNode(userMixer)
+                try audioEngine.connectInstrument(userMixer)
                 selectedInstrument = .user(sample)
                 allNotesOff()
                 lastError = nil

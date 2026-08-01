@@ -35,6 +35,18 @@ enum InstrumentKind: String, CaseIterable, Identifiable, Codable, Sendable {
         }
     }
 
+    var bundledFileName: String? {
+        switch self {
+        case .piano: return "piano"
+        case .strings: return "strings"
+        case .organ: return "organ"
+        case .musicBox: return "musicbox"
+        case .synthLead: return "synth_lead"
+        case .synthPad: return "synth_pad"
+        case .userSample: return nil
+        }
+    }
+
     var iconName: String {
         switch self {
         case .piano: return "pianokeys"
