@@ -48,6 +48,7 @@
 		E55AC4E119237A17511B8151 /* BundledInstrumentSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D8C865B7A9216E000D07F7 /* BundledInstrumentSampler.swift */; };
 		E85AC5113A8F0F06AE7284E2 /* strings.wav in Resources */ = {isa = PBXBuildFile; fileRef = F9A8C584B471D6B7D4425942 /* strings.wav */; };
 		FB1449FC6D33BC7643EA4131 /* YDP-GrandPiano.sf2 in Resources */ = {isa = PBXBuildFile; fileRef = 4309994F20202C3ECC8B9DCC /* YDP-GrandPiano.sf2 */; };
+		FDCA3495DDA95FEDFEF8777E /* LayeredInstrumentSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CD931489823403DD322B791 /* LayeredInstrumentSampler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +80,7 @@
 		477353484F8DBCB63692F509 /* SampleRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleRecorder.swift; sourceTree = "<group>"; };
 		4890A61E78069E00FEDF1506 /* MIDIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDIService.swift; sourceTree = "<group>"; };
 		550839458455FDB3D75D4104 /* CustomSoundBankApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomSoundBankApp.swift; sourceTree = "<group>"; };
+		5CD931489823403DD322B791 /* LayeredInstrumentSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayeredInstrumentSampler.swift; sourceTree = "<group>"; };
 		5CF112368FAD4E3F5610438F /* MIDIUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDIUtilities.swift; sourceTree = "<group>"; };
 		5D31DC970BFBA63E568EEB07 /* BundledPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundledPad.swift; sourceTree = "<group>"; };
 		6249C4EE067B13242E99AA9B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -224,6 +226,7 @@
 				6B900A446C197B005840CBA3 /* BundledPadSampleRenderer.swift */,
 				778C315DD3BE58309B4DBBE0 /* InstrumentPerformanceCore.swift */,
 				466A57B18C3B6F06312D99A5 /* InstrumentRouter.swift */,
+				5CD931489823403DD322B791 /* LayeredInstrumentSampler.swift */,
 				B771542AF8EFA3DA45A9F215 /* SampleVoicePool.swift */,
 			);
 			path = Instruments;
@@ -414,6 +417,7 @@
 				8207145A5616151D634392E8 /* InstrumentKind.swift in Sources */,
 				6D19612C4EF0A1068907A2B8 /* InstrumentPerformanceCore.swift in Sources */,
 				14E45EC104D50451AA3C8267 /* InstrumentRouter.swift in Sources */,
+				FDCA3495DDA95FEDFEF8777E /* LayeredInstrumentSampler.swift in Sources */,
 				14E60F3311B69A847E3A3AFB /* LibraryView.swift in Sources */,
 				5FAE337B41C89233B3635F12 /* LiveModeView.swift in Sources */,
 				169159DB1C3CB119CD336F32 /* MIDIEventDecoder.swift in Sources */,

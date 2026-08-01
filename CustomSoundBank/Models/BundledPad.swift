@@ -42,6 +42,11 @@ enum PadCategory: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+struct LayerSpec: Equatable, Sendable, Hashable {
+    let padID: String
+    let volume: Float
+}
+
 struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
     let id: String
     let displayName: String
@@ -49,6 +54,26 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
     let gmProgram: UInt8
     /// nil uses GeneralUser-GS; set for alternate soundfonts (e.g. YDP-GrandPiano).
     let soundFontFileName: String?
+    /// When set, this pad layers multiple instruments instead of using gmProgram/soundFontFileName.
+    let layers: [LayerSpec]?
+
+    init(
+        id: String,
+        displayName: String,
+        category: PadCategory,
+        gmProgram: UInt8,
+        soundFontFileName: String? = nil,
+        layers: [LayerSpec]? = nil
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.category = category
+        self.gmProgram = gmProgram
+        self.soundFontFileName = soundFontFileName
+        self.layers = layers
+    }
+
+    var isLayered: Bool { layers != nil }
 
     /// Bundled WAV sample basename (without extension) when this pad uses a classic exported sample.
     var bundledWAVFileName: String? {
@@ -73,6 +98,16 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
         BundledPad(id: "piano_epiano2", displayName: "E. Piano 2", category: .piano, gmProgram: 5, soundFontFileName: nil),
         BundledPad(id: "piano_harpsichord", displayName: "Harpsichord", category: .piano, gmProgram: 6, soundFontFileName: nil),
         BundledPad(id: "piano_clavinet", displayName: "Clavinet", category: .piano, gmProgram: 7, soundFontFileName: nil),
+        BundledPad(
+            id: "piano_strings_layer",
+            displayName: "Piano + Strings",
+            category: .piano,
+            gmProgram: 0,
+            layers: [
+                LayerSpec(padID: "piano_grand", volume: 1.0),
+                LayerSpec(padID: "strings_ensemble", volume: 0.65),
+            ]
+        ),
 
         // Mallets & Bells (GM 8–15)
         BundledPad(id: "musicbox_celesta", displayName: "Celesta", category: .musicBox, gmProgram: 8, soundFontFileName: nil),
@@ -212,6 +247,7 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
     /// Default Live favorites: the six classic bundled WAV instruments.
     static let defaultFavoritePadIDs: [String] = [
         "piano_grand",
+        "piano_strings_layer",
         "strings_ensemble",
         "organ_church",
         "musicbox_classic",

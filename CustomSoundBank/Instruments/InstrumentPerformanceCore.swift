@@ -5,6 +5,8 @@ import Foundation
 final class InstrumentPerformanceCore: @unchecked Sendable {
     private let lock = NSLock()
     private let bundledSampler = BundledInstrumentSampler()
+    private let layeredSampler = LayeredInstrumentSampler()
+    private var usingLayeredSampler = false
     private var userVoicePool: SampleVoicePool?
     private var userMixer = AVAudioMixerNode()
     private weak var audioEngine: AudioEngineController?
@@ -37,8 +39,25 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
             ])
         }
         allNotesOffLocked()
-        try bundledSampler.load(pad: pad, into: audioEngine)
-        try audioEngine.connectInstrument(bundledSampler.node)
+        if let layerSpecs = pad.layers {
+            let resolvedLayers = layerSpecs.compactMap { spec -> (BundledPad, Float)? in
+                guard let layerPad = BundledPad.pad(withID: spec.padID) else { return nil }
+                return (layerPad, spec.volume)
+            }
+            guard !resolvedLayers.isEmpty else {
+                throw NSError(domain: "InstrumentPerformanceCore", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "Layered pad \(pad.id) has no valid layers."
+                ])
+            }
+            try layeredSampler.load(padID: pad.id, layers: resolvedLayers, into: audioEngine)
+            try audioEngine.connectInstrument(layeredSampler.node)
+            usingLayeredSampler = true
+        } else {
+            layeredSampler.tearDown(from: audioEngine)
+            try bundledSampler.load(pad: pad, into: audioEngine)
+            try audioEngine.connectInstrument(bundledSampler.node)
+            usingLayeredSampler = false
+        }
         selectedInstrument = .bundled(pad)
         applyInstrumentVolumeLocked()
         applyPerformanceControlsLocked()
@@ -56,6 +75,8 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
             audioEngine.attach(node: userMixer)
             userVoicePool = SampleVoicePool(engine: audioEngine.engine, mixer: userMixer)
         }
+        layeredSampler.tearDown(from: audioEngine)
+        usingLayeredSampler = false
         try userVoicePool?.load(sample: sample, from: fileURL)
         try audioEngine.connectInstrument(userMixer)
         selectedInstrument = .user(sample)
@@ -140,7 +161,11 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         sustainedNotes.remove(note)
         switch selectedInstrument {
         case .bundled:
-            bundledSampler.noteOn(note: note, velocity: velocity)
+            if usingLayeredSampler {
+                layeredSampler.noteOn(note: note, velocity: velocity)
+            } else {
+                bundledSampler.noteOn(note: note, velocity: velocity)
+            }
         case .user:
             userVoicePool?.noteOn(note: note, velocity: velocity)
         }
@@ -153,7 +178,11 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         }
         switch selectedInstrument {
         case .bundled:
-            bundledSampler.noteOff(note: note)
+            if usingLayeredSampler {
+                layeredSampler.noteOff(note: note)
+            } else {
+                bundledSampler.noteOff(note: note)
+            }
         case .user:
             userVoicePool?.noteOff(note: note)
         }
@@ -172,13 +201,18 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         sustainedNotes.removeAll()
         sustainDown = false
         bundledSampler.allNotesOff()
+        layeredSampler.allNotesOff()
         userVoicePool?.allNotesOff()
     }
 
     private func applyInstrumentVolumeLocked() {
         switch selectedInstrument {
         case .bundled:
-            bundledSampler.setVolume(instrumentVolume)
+            if usingLayeredSampler {
+                layeredSampler.setVolume(instrumentVolume)
+            } else {
+                bundledSampler.setVolume(instrumentVolume)
+            }
         case .user:
             userMixer.outputVolume = instrumentVolume
         }
@@ -192,7 +226,11 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
     private func applyModulationLocked() {
         switch selectedInstrument {
         case .bundled:
-            bundledSampler.setModulation(modulation)
+            if usingLayeredSampler {
+                layeredSampler.setModulation(modulation)
+            } else {
+                bundledSampler.setModulation(modulation)
+            }
         case .user:
             userVoicePool?.setModulation(modulation)
         }
@@ -201,7 +239,11 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
     private func applyPitchBendLocked() {
         switch selectedInstrument {
         case .bundled:
-            bundledSampler.setPitchBend(pitchBend)
+            if usingLayeredSampler {
+                layeredSampler.setPitchBend(pitchBend)
+            } else {
+                bundledSampler.setPitchBend(pitchBend)
+            }
         case .user:
             userVoicePool?.setPitchBend(pitchBend)
         }
