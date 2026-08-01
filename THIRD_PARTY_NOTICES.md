@@ -2,8 +2,10 @@
 
 ## GeneralUser GS SoundFont
 
-Bundled instruments load programs from **GeneralUser GS v1.471** by S. Christian Collins,
-included at `CustomSoundBank/Resources/SoundBanks/GeneralUser-GS.sf2`.
+Bundled instruments are rendered from **GeneralUser GS v1.471** by S. Christian Collins
+into per-instrument WAV files at build time (`scripts/export_instruments.py`).
+The source SoundFont (`GeneralUser-GS.sf2`) is kept in the repository for regeneration
+but is not shipped inside the app bundle.
 
 - Project: https://github.com/mrbumpy409/GeneralUser-GS
 - License: see `CustomSoundBank/Resources/SoundBanks/LICENSE.txt`

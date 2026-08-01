@@ -19,6 +19,7 @@
 		320700CEF821D8ADE248C985 /* CreateSampleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9F91C1F606999D6794745BA /* CreateSampleView.swift */; };
 		3A188C6BADC1F5B0A78D5ADC /* synth_pad.wav in Resources */ = {isa = PBXBuildFile; fileRef = 9212A1CA3F38FE3B179A7D40 /* synth_pad.wav */; };
 		4257593BC77FF722F5FAC430 /* MIDIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4890A61E78069E00FEDF1506 /* MIDIService.swift */; };
+		452BB3D23DD5066F46D398AA /* LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = E35BAA9566ADD498C423E7F9 /* LICENSE.txt */; };
 		4A76BB36E9839EFF45A1077D /* synth_lead.wav in Resources */ = {isa = PBXBuildFile; fileRef = 28C976A87DC8E9283316C611 /* synth_lead.wav */; };
 		4FD477DF63B2B123F582CD53 /* MIDIEventDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 347D6D817321098A95CAB8DE /* MIDIEventDecoderTests.swift */; };
 		54F317C4FF763652C7610C81 /* piano.wav in Resources */ = {isa = PBXBuildFile; fileRef = 45BBF4C945049797E9E27D7E /* piano.wav */; };
@@ -74,6 +75,7 @@
 		D51F55C5B73568FE21B4AE97 /* SampleLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleLibraryStore.swift; sourceTree = "<group>"; };
 		D9E954A3C1500ADE6C3AB28A /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		DB48C2AA160E143A31A30EE3 /* CustomSoundBank.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CustomSoundBank.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E35BAA9566ADD498C423E7F9 /* LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
 		E9F91C1F606999D6794745BA /* CreateSampleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateSampleView.swift; sourceTree = "<group>"; };
 		ECC204971A0FDF0909CB129C /* InstrumentKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentKind.swift; sourceTree = "<group>"; };
 		F6DCFBDDFC437C4C0BEF3646 /* GeneralUser-GS.sf2 */ = {isa = PBXFileReference; path = "GeneralUser-GS.sf2"; sourceTree = "<group>"; };
@@ -147,6 +149,7 @@
 			isa = PBXGroup;
 			children = (
 				F6DCFBDDFC437C4C0BEF3646 /* GeneralUser-GS.sf2 */,
+				E35BAA9566ADD498C423E7F9 /* LICENSE.txt */,
 				10894BCF9A1225221BBA6FEA /* musicbox.wav */,
 				9442D13DE3DBCA5C9600FB0D /* organ.wav */,
 				45BBF4C945049797E9E27D7E /* piano.wav */,
@@ -330,6 +333,7 @@
 			files = (
 				1355A197D5EA3EF6BB3DC64A /* Assets.xcassets in Resources */,
 				61F448B8CC0676C0B8C8F39F /* GeneralUser-GS.sf2 in Resources */,
+				452BB3D23DD5066F46D398AA /* LICENSE.txt in Resources */,
 				C89728A289BE391DA5DCB44F /* musicbox.wav in Resources */,
 				7E52973C338B4A1F1FE4BBB6 /* organ.wav in Resources */,
 				54F317C4FF763652C7610C81 /* piano.wav in Resources */,

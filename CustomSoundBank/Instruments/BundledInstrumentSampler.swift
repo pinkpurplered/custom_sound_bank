@@ -1,57 +1,46 @@
-import AudioToolbox
 import AVFoundation
 import Foundation
 
 @MainActor
 final class BundledInstrumentSampler {
-    private static let bundledBankName = "GeneralUser-GS"
-    private static let systemBankPath =
-        "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls"
-
-    private let sampler = AVAudioUnitSampler()
+    private var sampler = AVAudioUnitSampler()
     private var loadedKind: InstrumentKind?
 
     var node: AVAudioNode { sampler }
 
-    func load(kind: InstrumentKind, into engine: AudioEngineController) throws {
-        engine.attach(node: sampler)
+    func load(kind: InstrumentKind, into audioEngine: AudioEngineController) throws {
         guard loadedKind != kind else { return }
 
-        guard let program = kind.gmProgram else {
+        guard let fileName = kind.bundledFileName else {
             throw NSError(domain: "BundledInstrumentSampler", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "No instrument program for \(kind.displayName)"
+                NSLocalizedDescriptionKey: "No bundled asset for \(kind.displayName)"
             ])
         }
 
-        guard let bankURL = Self.soundBankURL() else {
+        guard let sampleURL = Self.sampleURL(fileName: fileName) else {
             throw NSError(domain: "BundledInstrumentSampler", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "Bundled General MIDI sound bank is missing from the app."
+                NSLocalizedDescriptionKey: "Missing bundled sample \(fileName).wav"
             ])
         }
 
-        try sampler.loadSoundBankInstrument(
-            at: bankURL,
-            program: program,
-            bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
-            bankLSB: UInt8(kAUSampler_DefaultBankLSB)
-        )
-        loadedKind = kind
+        allNotesOff()
+
+        try audioEngine.mutateGraph {
+            if audioEngine.engine.attachedNodes.contains(sampler) {
+                audioEngine.detach(node: sampler)
+            }
+
+            let newSampler = AVAudioUnitSampler()
+            try newSampler.loadAudioFiles(at: [sampleURL])
+            sampler = newSampler
+            loadedKind = kind
+            audioEngine.attach(node: sampler)
+        }
     }
 
-    private static func soundBankURL() -> URL? {
-        if let bundled = Bundle.main.url(
-            forResource: bundledBankName,
-            withExtension: "sf2",
-            subdirectory: "SoundBanks"
-        ) ?? Bundle.main.url(forResource: bundledBankName, withExtension: "sf2") {
-            return bundled
-        }
-
-        let systemURL = URL(fileURLWithPath: systemBankPath)
-        if FileManager.default.fileExists(atPath: systemURL.path) {
-            return systemURL
-        }
-        return nil
+    private static func sampleURL(fileName: String) -> URL? {
+        Bundle.main.url(forResource: fileName, withExtension: "wav", subdirectory: "SoundBanks")
+            ?? Bundle.main.url(forResource: fileName, withExtension: "wav")
     }
 
     func noteOn(note: UInt8, velocity: UInt8) {

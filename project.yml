@@ -21,6 +21,9 @@ targets:
     resources:
       - path: CustomSoundBank/Resources/SoundBanks
         buildPhase: resources
+        excludes:
+          - "**/*.sf2"
+          - "**/*.mid"
       - path: CustomSoundBank/Assets.xcassets
     info:
       path: CustomSoundBank/Info.plist

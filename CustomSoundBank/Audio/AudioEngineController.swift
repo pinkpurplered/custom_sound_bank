@@ -58,6 +58,33 @@ final class AudioEngineController: ObservableObject {
         }
     }
 
+    func mutateGraph(_ mutation: () throws -> Void) throws {
+        let wasRunning = engine.isRunning
+        if wasRunning {
+            engine.stop()
+            isRunning = false
+        }
+
+        try mutation()
+
+        engine.prepare()
+        if wasRunning {
+            try engine.start()
+            isRunning = true
+        }
+    }
+
+    func connectInstrument(_ node: AVAudioNode) throws {
+        try mutateGraph {
+            for attached in engine.attachedNodes where attached !== mainMixer && attached !== engine.outputNode {
+                if attached is AVAudioUnitSampler || attached is AVAudioPlayerNode {
+                    detach(node: attached)
+                }
+            }
+            attach(node: node)
+        }
+    }
+
     func replaceOutputNode(_ node: AVAudioNode) {
         for attached in engine.attachedNodes where attached !== mainMixer && attached !== engine.outputNode {
             if attached is AVAudioUnitSampler || attached is AVAudioPlayerNode {
