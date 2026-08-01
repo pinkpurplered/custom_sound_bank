@@ -23,7 +23,7 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
     private static let legacyFavoritePadIDs: [String: String] = [
         "piano": "piano_grand",
         "strings": "strings_ensemble",
-        "organ": "organ_church",
+        "organ": "organ_drawbar",
         "musicBox": "musicbox_classic",
         "synthLead": "synth_lead_saw",
         "synthPad": "synth_pad_warm",

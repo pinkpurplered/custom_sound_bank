@@ -31,6 +31,8 @@
 		61F448B8CC0676C0B8C8F39F /* GeneralUser-GS.sf2 in Resources */ = {isa = PBXBuildFile; fileRef = F6DCFBDDFC437C4C0BEF3646 /* GeneralUser-GS.sf2 */; };
 		6D19612C4EF0A1068907A2B8 /* InstrumentPerformanceCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 778C315DD3BE58309B4DBBE0 /* InstrumentPerformanceCore.swift */; };
 		714C23B5888F31CE47653DC8 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8851BFDFB1AB46F87ADD023A /* AppDelegate.swift */; };
+		731BF42AB3ACE58C8360760C /* FreePats-DrawbarOrgan.sf2 in Resources */ = {isa = PBXBuildFile; fileRef = 2EBD616B99E813F2829ECCC8 /* FreePats-DrawbarOrgan.sf2 */; };
+		74A918AD910D536A11948B15 /* FreePats-RockOrgan.sf2 in Resources */ = {isa = PBXBuildFile; fileRef = 8AFE90A56BCF570AEDCE3FE5 /* FreePats-RockOrgan.sf2 */; };
 		786D0F41ECC90F126FCC738B /* SampleLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D51F55C5B73568FE21B4AE97 /* SampleLibraryStore.swift */; };
 		7E52973C338B4A1F1FE4BBB6 /* organ.wav in Resources */ = {isa = PBXBuildFile; fileRef = 9442D13DE3DBCA5C9600FB0D /* organ.wav */; };
 		8207145A5616151D634392E8 /* InstrumentKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECC204971A0FDF0909CB129C /* InstrumentKind.swift */; };
@@ -39,6 +41,7 @@
 		A27B1C6FF0F32698B96E58BE /* CustomSoundBankApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 550839458455FDB3D75D4104 /* CustomSoundBankApp.swift */; };
 		A61BEC09C29697F11374D504 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE3F5B77B79F6B7AC0F1C84 /* AppModel.swift */; };
 		A93B8CE827DA761E6A325A06 /* BrowsePadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AFB8A66562532E0FECD84C0 /* BrowsePadsView.swift */; };
+		C40582BC09CC062127CC2C11 /* FreePats-PercussiveOrgan.sf2 in Resources */ = {isa = PBXBuildFile; fileRef = F8D0F9D84280D827879E04D4 /* FreePats-PercussiveOrgan.sf2 */; };
 		C7B87F78039F624761EB9A3F /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A87B78AD822AFC1BC8113FE /* AppSettings.swift */; };
 		C89728A289BE391DA5DCB44F /* musicbox.wav in Resources */ = {isa = PBXBuildFile; fileRef = 10894BCF9A1225221BBA6FEA /* musicbox.wav */; };
 		E55AC4E119237A17511B8151 /* BundledInstrumentSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D8C865B7A9216E000D07F7 /* BundledInstrumentSampler.swift */; };
@@ -63,6 +66,7 @@
 		28C976A87DC8E9283316C611 /* synth_lead.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = synth_lead.wav; sourceTree = "<group>"; };
 		2AFB8A66562532E0FECD84C0 /* BrowsePadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowsePadsView.swift; sourceTree = "<group>"; };
 		2E7EC3C0226FC381F08A733A /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		2EBD616B99E813F2829ECCC8 /* FreePats-DrawbarOrgan.sf2 */ = {isa = PBXFileReference; path = "FreePats-DrawbarOrgan.sf2"; sourceTree = "<group>"; };
 		302146260DB65D90D2574B56 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		33F4BABC8B1A08512117FF20 /* PerformComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformComponents.swift; sourceTree = "<group>"; };
 		347D6D817321098A95CAB8DE /* MIDIEventDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDIEventDecoderTests.swift; sourceTree = "<group>"; };
@@ -82,6 +86,7 @@
 		778C315DD3BE58309B4DBBE0 /* InstrumentPerformanceCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentPerformanceCore.swift; sourceTree = "<group>"; };
 		7EE3F5B77B79F6B7AC0F1C84 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		8851BFDFB1AB46F87ADD023A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		8AFE90A56BCF570AEDCE3FE5 /* FreePats-RockOrgan.sf2 */ = {isa = PBXFileReference; path = "FreePats-RockOrgan.sf2"; sourceTree = "<group>"; };
 		8C87412E197E75CEA04EE67A /* MIDIEventDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDIEventDecoder.swift; sourceTree = "<group>"; };
 		9212A1CA3F38FE3B179A7D40 /* synth_pad.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = synth_pad.wav; sourceTree = "<group>"; };
 		9442D13DE3DBCA5C9600FB0D /* organ.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = organ.wav; sourceTree = "<group>"; };
@@ -95,6 +100,7 @@
 		E9F91C1F606999D6794745BA /* CreateSampleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateSampleView.swift; sourceTree = "<group>"; };
 		ECC204971A0FDF0909CB129C /* InstrumentKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentKind.swift; sourceTree = "<group>"; };
 		F6DCFBDDFC437C4C0BEF3646 /* GeneralUser-GS.sf2 */ = {isa = PBXFileReference; path = "GeneralUser-GS.sf2"; sourceTree = "<group>"; };
+		F8D0F9D84280D827879E04D4 /* FreePats-PercussiveOrgan.sf2 */ = {isa = PBXFileReference; path = "FreePats-PercussiveOrgan.sf2"; sourceTree = "<group>"; };
 		F9A8C584B471D6B7D4425942 /* strings.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = strings.wav; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -165,6 +171,9 @@
 		76B71CB7B882DC3616F7A799 /* SoundBanks */ = {
 			isa = PBXGroup;
 			children = (
+				2EBD616B99E813F2829ECCC8 /* FreePats-DrawbarOrgan.sf2 */,
+				F8D0F9D84280D827879E04D4 /* FreePats-PercussiveOrgan.sf2 */,
+				8AFE90A56BCF570AEDCE3FE5 /* FreePats-RockOrgan.sf2 */,
 				F6DCFBDDFC437C4C0BEF3646 /* GeneralUser-GS.sf2 */,
 				E35BAA9566ADD498C423E7F9 /* LICENSE.txt */,
 				10894BCF9A1225221BBA6FEA /* musicbox.wav */,
@@ -364,6 +373,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				1355A197D5EA3EF6BB3DC64A /* Assets.xcassets in Resources */,
+				731BF42AB3ACE58C8360760C /* FreePats-DrawbarOrgan.sf2 in Resources */,
+				C40582BC09CC062127CC2C11 /* FreePats-PercussiveOrgan.sf2 in Resources */,
+				74A918AD910D536A11948B15 /* FreePats-RockOrgan.sf2 in Resources */,
 				61F448B8CC0676C0B8C8F39F /* GeneralUser-GS.sf2 in Resources */,
 				452BB3D23DD5066F46D398AA /* LICENSE.txt in Resources */,
 				FB1449FC6D33BC7643EA4131 /* YDP-GrandPiano.sf2 in Resources */,
