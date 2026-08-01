@@ -3,7 +3,13 @@ import Combine
 import Foundation
 
 @MainActor
-final class SampleRecorder: ObservableObject {
+protocol AudioSessionCoordinator: AnyObject {
+    func suspendPerformanceAudio()
+    func resumePerformanceAudio()
+}
+
+@MainActor
+final class SampleRecorder: NSObject, ObservableObject {
     enum State: Equatable {
         case idle
         case countdown(Int)
@@ -20,17 +26,22 @@ final class SampleRecorder: ObservableObject {
     @Published var trimEnd: TimeInterval = 0
     @Published private(set) var lastError: String?
 
-    private let engine = AVAudioEngine()
-    private let player = AVAudioPlayerNode()
-    private var audioFile: AVAudioFile?
+    weak var audioCoordinator: AudioSessionCoordinator?
+
+    private var recorder: AVAudioRecorder?
+    private var previewPlayer: AVAudioPlayer?
     private var meterTimer: Timer?
-    private var recordingStart: Date?
+    private var playbackStopTimer: Timer?
     private let maxDuration: TimeInterval = 10
 
-    init() {
-        engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: nil)
-    }
+    private let recordingSettings: [String: Any] = [
+        AVFormatIDKey: kAudioFormatLinearPCM,
+        AVSampleRateKey: 44_100,
+        AVNumberOfChannelsKey: 1,
+        AVLinearPCMBitDepthKey: 16,
+        AVLinearPCMIsFloatKey: false,
+        AVLinearPCMIsBigEndianKey: false
+    ]
 
     func requestPermission() async -> Bool {
         await withCheckedContinuation { continuation in
@@ -46,7 +57,9 @@ final class SampleRecorder: ObservableObject {
             throw NSError(domain: "SampleRecorder", code: 1)
         }
 
-        try configureSession()
+        audioCoordinator?.suspendPerformanceAudio()
+        try configureSessionForRecording()
+
         for tick in stride(from: 3, through: 1, by: -1) {
             state = .countdown(tick)
             try await Task.sleep(nanoseconds: 1_000_000_000)
@@ -55,59 +68,77 @@ final class SampleRecorder: ObservableObject {
     }
 
     func stopRecording() {
-        engine.inputNode.removeTap(onBus: 0)
         meterTimer?.invalidate()
         meterTimer = nil
-        if let recordingStart {
-            duration = Date().timeIntervalSince(recordingStart)
+        recorder?.stop()
+        recorder = nil
+        if duration > 0 {
             trimEnd = duration
         }
-        engine.stop()
         state = recordedURL == nil ? .idle : .recorded
     }
 
     func discardRecording() {
+        stopPreview()
         if let recordedURL {
             try? FileManager.default.removeItem(at: recordedURL)
         }
         recordedURL = nil
-        audioFile = nil
         duration = 0
         trimStart = 0
         trimEnd = 0
         state = .idle
+        audioCoordinator?.resumePerformanceAudio()
     }
 
     func playTrimmedPreview() throws {
         guard let recordedURL else { return }
-        let file = try AVAudioFile(forReading: recordedURL)
-        let format = file.processingFormat
-        let startFrame = AVAudioFramePosition(trimStart * format.sampleRate)
-        let endFrame = AVAudioFramePosition(trimEnd * format.sampleRate)
-        let frameCount = max(1, endFrame - startFrame)
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameCount)) else {
-            return
-        }
-        file.framePosition = startFrame
-        try file.read(into: buffer, frameCount: AVAudioFrameCount(frameCount))
+        stopPreview()
 
-        if !engine.isRunning {
-            try engine.start()
-        }
-        state = .playingBack
-        player.stop()
-        player.scheduleBuffer(buffer, at: nil) { [weak self] in
+        let player = try AVAudioPlayer(contentsOf: recordedURL)
+        player.delegate = PreviewDelegate { [weak self] in
             Task { @MainActor in
-                self?.state = .recorded
+                self?.finishPreview()
             }
         }
+        player.prepareToPlay()
+
+        let start = min(max(trimStart, 0), duration)
+        let end = min(max(trimEnd, start + 0.05), max(duration, 0.1))
+        player.currentTime = start
+        previewPlayer = player
+        state = .playingBack
         player.play()
+
+        let previewLength = end - start
+        playbackStopTimer = Timer.scheduledTimer(withTimeInterval: previewLength, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.finishPreview()
+            }
+        }
     }
 
-    private func configureSession() throws {
+    func stopPreview() {
+        playbackStopTimer?.invalidate()
+        playbackStopTimer = nil
+        previewPlayer?.stop()
+        previewPlayer = nil
+        if state == .playingBack {
+            state = recordedURL == nil ? .idle : .recorded
+        }
+    }
+
+    private func finishPreview() {
+        stopPreview()
+        audioCoordinator?.resumePerformanceAudio()
+    }
+
+    private func configureSessionForRecording() throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+        try session.setPreferredSampleRate(44_100)
         try session.setActive(true)
+
         if let builtInMic = session.availableInputs?.first(where: { $0.portType == .builtInMic }) {
             try session.setPreferredInput(builtInMic)
         }
@@ -116,41 +147,52 @@ final class SampleRecorder: ObservableObject {
     private func startRecording() throws {
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("caf")
+            .appendingPathExtension("wav")
 
-        let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        audioFile = try AVAudioFile(forWriting: tempURL, settings: format.settings)
+        let recorder = try AVAudioRecorder(url: tempURL, settings: recordingSettings)
+        recorder.isMeteringEnabled = true
+        recorder.prepareToRecord()
+        guard recorder.record() else {
+            throw NSError(domain: "SampleRecorder", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "Could not start recording."
+            ])
+        }
+
+        self.recorder = recorder
         recordedURL = tempURL
-        recordingStart = Date()
         duration = 0
         trimStart = 0
         trimEnd = 0
+        state = .recording
 
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-            guard let self else { return }
-            try? self.audioFile?.write(from: buffer)
-            if let channel = buffer.floatChannelData?.pointee {
-                let frameLength = Int(buffer.frameLength)
-                var peak: Float = 0
-                for index in 0..<frameLength {
-                    peak = max(peak, abs(channel[index]))
-                }
-                Task { @MainActor in
-                    self.level = peak
-                    if let recordingStart = self.recordingStart {
-                        self.duration = Date().timeIntervalSince(recordingStart)
-                        self.trimEnd = self.duration
-                        if self.duration >= self.maxDuration {
-                            self.stopRecording()
-                        }
-                    }
-                }
+        meterTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateMeters()
             }
         }
+    }
 
-        engine.prepare()
-        try engine.start()
-        state = .recording
+    private func updateMeters() {
+        guard let recorder, recorder.isRecording else { return }
+        recorder.updateMeters()
+        let power = recorder.averagePower(forChannel: 0)
+        level = max(0, min(1, (power + 50) / 50))
+        duration = recorder.currentTime
+        trimEnd = duration
+        if duration >= maxDuration {
+            stopRecording()
+        }
+    }
+}
+
+private final class PreviewDelegate: NSObject, AVAudioPlayerDelegate {
+    private let onFinish: () -> Void
+
+    init(onFinish: @escaping () -> Void) {
+        self.onFinish = onFinish
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        onFinish()
     }
 }

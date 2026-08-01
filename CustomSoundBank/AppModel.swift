@@ -2,7 +2,7 @@ import Combine
 import Foundation
 
 @MainActor
-final class AppModel: ObservableObject {
+final class AppModel: ObservableObject, AudioSessionCoordinator {
     @Published var settings = AppSettings.default
     @Published private(set) var startupError: String?
 
@@ -58,6 +58,20 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func suspendPerformanceAudio() {
+        instrumentRouter.allNotesOff()
+        audioEngine.stop()
+    }
+
+    func resumePerformanceAudio() {
+        do {
+            try audioEngine.start()
+            audioEngine.refreshRouteSnapshot()
+        } catch {
+            startupError = error.localizedDescription
+        }
+    }
+
     func updateMasterVolume(_ volume: Float) {
         settings.masterVolume = volume
         audioEngine.setMasterVolume(volume)
@@ -96,6 +110,7 @@ final class AppModel: ObservableObject {
             trimEnd: recorder.trimEnd > recorder.trimStart ? recorder.trimEnd : nil
         )
         await selectUserInstrument(sample)
+        resumePerformanceAudio()
         return sample
     }
 
