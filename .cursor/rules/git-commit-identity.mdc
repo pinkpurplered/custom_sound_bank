@@ -10,7 +10,8 @@ All commits in this repository must use **PinkPurpleRed** as the author and comm
 ## Required identity
 
 - **Name:** `PinkPurpleRed`
-- **Never use:** `Evelyn`, `CursorAgent`, or any other author name
+- **Never use:** `Evelyn`, `CursorAgent`, `Cursor`, or any other author name
+- **Never add** `Co-authored-by` trailers (especially `Co-authored-by: Cursor <cursoragent@cursor.com>`)
 
 ## When creating commits
 
@@ -28,4 +29,4 @@ GIT_AUTHOR_NAME="PinkPurpleRed" GIT_COMMITTER_NAME="PinkPurpleRed" git commit ..
 
 ## When rewriting history
 
-If commits were made with the wrong author, rewrite them to PinkPurpleRed before pushing. Do not leave Evelyn or CursorAgent in commit history or contributor attribution.
+If commits were made with the wrong author or co-author trailers, rewrite them before pushing. Do not leave Evelyn, CursorAgent, or Cursor co-author lines in commit history or contributor attribution.
