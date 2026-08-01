@@ -1,0 +1,31 @@
+---
+description: Git commit author identity for this repository
+alwaysApply: true
+---
+
+# Git Commit Identity
+
+All commits in this repository must use **PinkPurpleRed** as the author and committer name.
+
+## Required identity
+
+- **Name:** `PinkPurpleRed`
+- **Never use:** `Evelyn`, `CursorAgent`, or any other author name
+
+## When creating commits
+
+Before committing, ensure the local repo identity is set:
+
+```bash
+git config --local user.name "PinkPurpleRed"
+```
+
+If local config is missing or wrong, set it before `git commit`. You may also pass identity explicitly:
+
+```bash
+GIT_AUTHOR_NAME="PinkPurpleRed" GIT_COMMITTER_NAME="PinkPurpleRed" git commit ...
+```
+
+## When rewriting history
+
+If commits were made with the wrong author, rewrite them to PinkPurpleRed before pushing. Do not leave Evelyn or CursorAgent in commit history or contributor attribution.
