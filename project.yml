@@ -1,0 +1,59 @@
+name: CustomSoundBank
+options:
+  bundleIdPrefix: com.pinkpurplered
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  CustomSoundBank:
+    type: application
+    platform: iOS
+    sources:
+      - path: CustomSoundBank
+        excludes:
+          - Info.plist
+    resources:
+      - path: CustomSoundBank/Resources
+      - path: CustomSoundBank/Assets.xcassets
+    info:
+      path: CustomSoundBank/Info.plist
+      properties:
+        CFBundleDisplayName: Custom Sound Bank
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIBackgroundModes:
+          - audio
+        NSMicrophoneUsageDescription: Custom Sound Bank records short samples from the iPhone microphone so you can play them from your MIDI controller.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pinkpurplered.CustomSoundBank
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: CustomSoundBank/Info.plist
+  CustomSoundBankTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - CustomSoundBankTests
+    dependencies:
+      - target: CustomSoundBank
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pinkpurplered.CustomSoundBankTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/CustomSoundBank.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CustomSoundBank
+
+schemes:
+  CustomSoundBank:
+    build:
+      targets:
+        CustomSoundBank: all
+    test:
+      targets:
+        - CustomSoundBankTests
+    run:
+      config: Debug
