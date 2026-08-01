@@ -11,7 +11,7 @@ struct AppSettings: Equatable, Sendable {
     static let `default` = AppSettings(
         masterVolume: 0.85,
         midiChannel: 0,
-        favoriteBundledPadIDs: [BundledPad.defaultPad.id],
+        favoriteBundledPadIDs: BundledPad.defaultFavoritePadIDs,
         favoriteUserSampleIDs: [],
         bundledPadVolumes: [:],
         userSampleVolumes: [:]

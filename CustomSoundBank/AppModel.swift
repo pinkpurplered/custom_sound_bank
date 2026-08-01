@@ -19,6 +19,16 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
     private static let bundledVolumesKey = "bundledPadVolumes"
     private static let userVolumesKey = "userSampleVolumes"
 
+    /// Maps pre-catalog InstrumentKind ids saved in UserDefaults to current BundledPad ids.
+    private static let legacyFavoritePadIDs: [String: String] = [
+        "piano": "piano_grand",
+        "strings": "strings_ensemble",
+        "organ": "organ_church",
+        "musicBox": "musicbox_classic",
+        "synthLead": "synth_lead_saw",
+        "synthPad": "synth_pad_warm",
+    ]
+
     let audioEngine = AudioEngineController()
     let midiService = MIDIService()
     let instrumentRouter = InstrumentRouter()
@@ -33,11 +43,18 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
             }
             .store(in: &cancellables)
 
-        midiService.onEvent = { [weak self] event in
-            Task { @MainActor in
-                self?.handleMIDI(event)
+        midiService.setEventHandlers(
+            performance: { [weak self] event in
+                self?.instrumentRouter.performanceCore.handleMIDI(event)
+            },
+            ui: { [weak self] event in
+                guard let self else { return }
+                Task { @MainActor in
+                    self.instrumentRouter.handleMIDIUI(event, channelFilter: self.settings.midiChannel)
+                    self.midiService.recordReceivedEvent(event)
+                }
             }
-        }
+        )
 
         audioEngine.installObservers(
             onInterruption: { [weak self] in
@@ -59,6 +76,7 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
 
     func bootstrap() async {
         instrumentRouter.configure(audioEngine: audioEngine)
+        instrumentRouter.setMIDIChannelFilter(settings.midiChannel)
         do {
             try audioEngine.start()
             audioEngine.setMasterVolume(settings.masterVolume)
@@ -90,6 +108,7 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
     func resumePerformanceAudio() {
         performanceAudioSuspended = false
         do {
+            try audioEngine.configurePerformanceSession()
             try audioEngine.start()
             audioEngine.refreshRouteSnapshot()
         } catch {
@@ -104,6 +123,7 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
 
     func updateMIDIChannel(_ channel: UInt8) {
         settings.midiChannel = channel
+        instrumentRouter.setMIDIChannelFilter(channel)
     }
 
     func setModulation(_ value: Float) {
@@ -232,7 +252,10 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
     private func loadFavorites() {
         let defaults = UserDefaults.standard
         if let bundledIDs = defaults.stringArray(forKey: Self.favoritesKey) {
-            settings.favoriteBundledPadIDs = bundledIDs
+            settings.favoriteBundledPadIDs = Self.normalizeFavoritePadIDs(bundledIDs)
+        }
+        if settings.favoriteBundledPadIDs.isEmpty {
+            settings.favoriteBundledPadIDs = BundledPad.defaultFavoritePadIDs
         }
         if let userIDStrings = defaults.stringArray(forKey: Self.favoriteUserSamplesKey) {
             settings.favoriteUserSampleIDs = userIDStrings.compactMap(UUID.init(uuidString:))
@@ -289,7 +312,13 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
         return sample
     }
 
-    private func handleMIDI(_ event: MIDINoteEvent) {
-        instrumentRouter.handleMIDI(event, channelFilter: settings.midiChannel)
+    private static func normalizeFavoritePadIDs(_ ids: [String]) -> [String] {
+        var seen = Set<String>()
+        return ids.compactMap { id in
+            let migrated = legacyFavoritePadIDs[id] ?? id
+            guard BundledPad.pad(withID: migrated) != nil, !seen.contains(migrated) else { return nil }
+            seen.insert(migrated)
+            return migrated
+        }
     }
 }

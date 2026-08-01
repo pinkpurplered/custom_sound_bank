@@ -50,6 +50,19 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
     /// nil uses GeneralUser-GS; set for alternate soundfonts (e.g. YDP-GrandPiano).
     let soundFontFileName: String?
 
+    /// Bundled WAV sample basename (without extension) when this pad uses a classic exported sample.
+    var bundledWAVFileName: String? {
+        Self.classicWAVFileNames[id]
+    }
+
+    private static let classicWAVFileNames: [String: String] = [
+        "strings_ensemble": "strings",
+        "organ_church": "organ",
+        "musicbox_classic": "musicbox",
+        "synth_lead_saw": "synth_lead",
+        "synth_pad_warm": "synth_pad",
+    ]
+
     static let catalog: [BundledPad] = [
         // Piano & Keys (GM 0–7)
         BundledPad(id: "piano_grand", displayName: "Grand Piano", category: .piano, gmProgram: 0, soundFontFileName: "YDP-GrandPiano"),
@@ -189,6 +202,16 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
     ]
 
     static let defaultPad = catalog[0]
+
+    /// Default Live favorites: the six classic bundled WAV instruments.
+    static let defaultFavoritePadIDs: [String] = [
+        "piano_grand",
+        "strings_ensemble",
+        "organ_church",
+        "musicbox_classic",
+        "synth_lead_saw",
+        "synth_pad_warm",
+    ]
 
     static func pad(withID id: String) -> BundledPad? {
         catalog.first { $0.id == id }

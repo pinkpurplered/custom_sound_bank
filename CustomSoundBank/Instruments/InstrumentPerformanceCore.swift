@@ -1,0 +1,209 @@
+import AVFoundation
+import Foundation
+
+/// Thread-safe MIDI-to-audio path. Called directly from the Core MIDI read callback.
+final class InstrumentPerformanceCore: @unchecked Sendable {
+    private let lock = NSLock()
+    private let bundledSampler = BundledInstrumentSampler()
+    private var userVoicePool: SampleVoicePool?
+    private var userMixer = AVAudioMixerNode()
+    private weak var audioEngine: AudioEngineController?
+    private var selectedInstrument: SelectedInstrument = .bundled(BundledPad.defaultPad)
+    private var sustainDown = false
+    private var sustainedNotes = Set<UInt8>()
+    private var instrumentVolume: Float = 1
+    private var modulation: Float = 0
+    private var pitchBend: Float = 0
+    private var midiChannelFilter: UInt8 = 0
+
+    func configure(audioEngine: AudioEngineController) {
+        lock.lock()
+        defer { lock.unlock() }
+        self.audioEngine = audioEngine
+    }
+
+    func setMIDIChannelFilter(_ channel: UInt8) {
+        lock.lock()
+        defer { lock.unlock() }
+        midiChannelFilter = channel
+    }
+
+    func selectBundled(_ pad: BundledPad) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let audioEngine else {
+            throw NSError(domain: "InstrumentPerformanceCore", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Audio engine is not configured."
+            ])
+        }
+        allNotesOffLocked()
+        try bundledSampler.load(pad: pad, into: audioEngine)
+        try audioEngine.connectInstrument(bundledSampler.node)
+        selectedInstrument = .bundled(pad)
+        applyInstrumentVolumeLocked()
+        applyPerformanceControlsLocked()
+    }
+
+    func selectUserSample(_ sample: UserSampleInstrument, fileURL: URL) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let audioEngine else {
+            throw NSError(domain: "InstrumentPerformanceCore", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Audio engine is not configured."
+            ])
+        }
+        if userVoicePool == nil {
+            audioEngine.attach(node: userMixer)
+            userVoicePool = SampleVoicePool(engine: audioEngine.engine, mixer: userMixer)
+        }
+        try userVoicePool?.load(sample: sample, from: fileURL)
+        try audioEngine.connectInstrument(userMixer)
+        selectedInstrument = .user(sample)
+        allNotesOffLocked()
+        applyInstrumentVolumeLocked()
+        applyPerformanceControlsLocked()
+    }
+
+    func setInstrumentVolume(_ volume: Float) {
+        lock.lock()
+        defer { lock.unlock() }
+        instrumentVolume = max(0, min(1, volume))
+        applyInstrumentVolumeLocked()
+    }
+
+    func setModulation(_ value: Float) {
+        lock.lock()
+        defer { lock.unlock() }
+        modulation = max(0, min(1, value))
+        applyModulationLocked()
+    }
+
+    func setPitchBend(_ value: Float) {
+        lock.lock()
+        defer { lock.unlock() }
+        pitchBend = max(-1, min(1, value))
+        applyPitchBendLocked()
+    }
+
+    func handleMIDI(_ event: MIDINoteEvent) {
+        lock.lock()
+        defer { lock.unlock() }
+        let channelFilter = midiChannelFilter
+        guard channelFilter == 0 || event.channel == channelFilter else { return }
+        switch event.kind {
+        case .noteOn(let note, let velocity):
+            if velocity == 0 {
+                noteOffLocked(note: note)
+            } else {
+                noteOnLocked(note: note, velocity: velocity)
+            }
+        case .noteOff(let note, _):
+            noteOffLocked(note: note)
+        case .sustain(let isDown):
+            setSustainLocked(isDown)
+        case .modulation(let value):
+            modulation = MIDIUtilities.normalizedModulation(value)
+            applyModulationLocked()
+        case .pitchBend(let value):
+            pitchBend = MIDIUtilities.normalizedPitchBend(value)
+            applyPitchBendLocked()
+        case .allNotesOff:
+            allNotesOffLocked()
+        }
+    }
+
+    func noteOn(note: UInt8, velocity: UInt8) {
+        lock.lock()
+        defer { lock.unlock() }
+        noteOnLocked(note: note, velocity: velocity)
+    }
+
+    func noteOff(note: UInt8) {
+        lock.lock()
+        defer { lock.unlock() }
+        noteOffLocked(note: note)
+    }
+
+    func allNotesOff() {
+        lock.lock()
+        defer { lock.unlock() }
+        allNotesOffLocked()
+    }
+
+    var currentInstrument: SelectedInstrument {
+        lock.lock()
+        defer { lock.unlock() }
+        return selectedInstrument
+    }
+
+    private func noteOnLocked(note: UInt8, velocity: UInt8) {
+        sustainedNotes.remove(note)
+        switch selectedInstrument {
+        case .bundled:
+            bundledSampler.noteOn(note: note, velocity: velocity)
+        case .user:
+            userVoicePool?.noteOn(note: note, velocity: velocity)
+        }
+    }
+
+    private func noteOffLocked(note: UInt8) {
+        if sustainDown {
+            sustainedNotes.insert(note)
+            return
+        }
+        switch selectedInstrument {
+        case .bundled:
+            bundledSampler.noteOff(note: note)
+        case .user:
+            userVoicePool?.noteOff(note: note)
+        }
+    }
+
+    private func setSustainLocked(_ isDown: Bool) {
+        sustainDown = isDown
+        if !isDown {
+            let notes = sustainedNotes
+            sustainedNotes.removeAll()
+            notes.forEach { noteOffLocked(note: $0) }
+        }
+    }
+
+    private func allNotesOffLocked() {
+        sustainedNotes.removeAll()
+        sustainDown = false
+        bundledSampler.allNotesOff()
+        userVoicePool?.allNotesOff()
+    }
+
+    private func applyInstrumentVolumeLocked() {
+        switch selectedInstrument {
+        case .bundled:
+            bundledSampler.setVolume(instrumentVolume)
+        case .user:
+            userMixer.outputVolume = instrumentVolume
+        }
+    }
+
+    private func applyPerformanceControlsLocked() {
+        applyModulationLocked()
+        applyPitchBendLocked()
+    }
+
+    private func applyModulationLocked() {
+        switch selectedInstrument {
+        case .bundled:
+            bundledSampler.setModulation(modulation)
+        case .user:
+            userVoicePool?.setModulation(modulation)
+        }
+    }
+
+    private func applyPitchBendLocked() {
+        switch selectedInstrument {
+        case .bundled:
+            bundledSampler.setPitchBend(pitchBend)
+        case .user:
+            userVoicePool?.setPitchBend(pitchBend)
+        }
+    }
+}

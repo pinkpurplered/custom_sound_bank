@@ -30,7 +30,7 @@ final class SampleRecorder: NSObject, ObservableObject {
 
     private var recorder: AVAudioRecorder?
     private var previewPlayer: AVAudioPlayer?
-    private var previewDelegate: PreviewDelegate?
+    private var previewGeneration = 0
     private var meterTimer: Timer?
     private var playbackStopTimer: Timer?
     private let maxDuration: TimeInterval = 10
@@ -96,17 +96,13 @@ final class SampleRecorder: NSObject, ObservableObject {
         guard let recordedURL else { return }
         stopPreview()
 
+        previewGeneration += 1
+        let generation = previewGeneration
+
         audioCoordinator?.suspendPerformanceAudio()
         try configureSessionForPlayback()
 
         let player = try AVAudioPlayer(contentsOf: recordedURL)
-        let delegate = PreviewDelegate { [weak self] in
-            Task { @MainActor in
-                self?.finishPreview()
-            }
-        }
-        previewDelegate = delegate
-        player.delegate = delegate
         player.prepareToPlay()
 
         let start = min(max(trimStart, 0), duration)
@@ -119,7 +115,8 @@ final class SampleRecorder: NSObject, ObservableObject {
         let previewLength = end - start
         playbackStopTimer = Timer.scheduledTimer(withTimeInterval: previewLength, repeats: false) { [weak self] _ in
             Task { @MainActor in
-                self?.finishPreview()
+                guard let self, self.previewGeneration == generation else { return }
+                self.finishPreview()
             }
         }
     }
@@ -127,15 +124,18 @@ final class SampleRecorder: NSObject, ObservableObject {
     func stopPreview() {
         playbackStopTimer?.invalidate()
         playbackStopTimer = nil
-        previewPlayer?.stop()
+        if let player = previewPlayer {
+            player.delegate = nil
+            player.stop()
+        }
         previewPlayer = nil
-        previewDelegate = nil
         if state == .playingBack {
             state = recordedURL == nil ? .idle : .recorded
         }
     }
 
     private func finishPreview() {
+        guard state == .playingBack else { return }
         stopPreview()
         audioCoordinator?.resumePerformanceAudio()
     }
@@ -196,17 +196,5 @@ final class SampleRecorder: NSObject, ObservableObject {
         if duration >= maxDuration {
             stopRecording()
         }
-    }
-}
-
-private final class PreviewDelegate: NSObject, AVAudioPlayerDelegate {
-    private let onFinish: () -> Void
-
-    init(onFinish: @escaping () -> Void) {
-        self.onFinish = onFinish
-    }
-
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        onFinish()
     }
 }
