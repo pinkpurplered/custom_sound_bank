@@ -8,6 +8,8 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     TARGETED_DEVICE_FAMILY: "1"
+    DEVELOPMENT_TEAM: 75R8BQ422C
+    CODE_SIGN_STYLE: Automatic
 targets:
   CustomSoundBank:
     type: application
