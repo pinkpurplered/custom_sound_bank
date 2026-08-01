@@ -30,3 +30,5 @@ GIT_AUTHOR_NAME="PinkPurpleRed" GIT_COMMITTER_NAME="PinkPurpleRed" git commit ..
 ## When rewriting history
 
 If commits were made with the wrong author or co-author trailers, rewrite them before pushing. Do not leave Evelyn, CursorAgent, or Cursor co-author lines in commit history or contributor attribution.
+
+This repo uses `.githooks/commit-msg` (via `core.hooksPath`) to strip `Co-authored-by: Cursor` lines automatically. Do not disable it.
