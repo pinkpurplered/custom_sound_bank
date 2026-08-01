@@ -31,6 +31,43 @@ final class MIDIEventDecoderTests: XCTestCase {
         XCTAssertEqual(events.count, 1)
         XCTAssertEqual(events[0].kind, .noteOn(note: 60, velocity: 100))
     }
+
+    func testRunningStatusNoteOn() {
+        let bytes: [UInt8] = [0x90, 60, 100, 64, 80]
+        let events = MIDIEventDecoder.decode(bytes: bytes)
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(events[0].kind, .noteOn(note: 60, velocity: 100))
+        XCTAssertEqual(events[1].kind, .noteOn(note: 64, velocity: 80))
+    }
+
+    func testPitchBendBeforeNoteOn() {
+        let bytes: [UInt8] = [0xE0, 0, 64, 0x90, 60, 100]
+        let events = MIDIEventDecoder.decode(bytes: bytes)
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(events[0].kind, .pitchBend(value: 8192))
+        XCTAssertEqual(events[1].kind, .noteOn(note: 60, velocity: 100))
+    }
+
+    func testModulationWheel() {
+        let bytes: [UInt8] = [0xB0, 1, 100]
+        let events = MIDIEventDecoder.decode(bytes: bytes)
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events[0].kind, .modulation(value: 100))
+    }
+
+    func testSysExBeforeNoteOn() {
+        let bytes: [UInt8] = [0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7, 0x90, 60, 100]
+        let events = MIDIEventDecoder.decode(bytes: bytes)
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events[0].kind, .noteOn(note: 60, velocity: 100))
+    }
+
+    func testIgnoresOrphanDataBytes() {
+        let bytes: [UInt8] = [0x3C, 0x90, 60, 100]
+        let events = MIDIEventDecoder.decode(bytes: bytes)
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events[0].kind, .noteOn(note: 60, velocity: 100))
+    }
 }
 
 final class MIDIUtilitiesTests: XCTestCase {
@@ -43,6 +80,12 @@ final class MIDIUtilitiesTests: XCTestCase {
     func testNoteName() {
         XCTAssertEqual(MIDIUtilities.noteName(for: 60), "C4")
         XCTAssertEqual(MIDIUtilities.noteName(for: 61), "C#4")
+    }
+
+    func testPitchBendConversion() {
+        XCTAssertEqual(MIDIUtilities.normalizedPitchBend(8192), 0, accuracy: 0.001)
+        XCTAssertEqual(MIDIUtilities.pitchBendMIDIValue(from: 0), 8192)
+        XCTAssertEqual(MIDIUtilities.pitchBendCents(from: 1), 200)
     }
 }
 

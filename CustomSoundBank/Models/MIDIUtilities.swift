@@ -15,4 +15,21 @@ enum MIDIUtilities {
     static func clampVelocity(_ velocity: UInt8) -> Float {
         max(0.05, Float(velocity) / 127.0)
     }
+
+    static func normalizedModulation(_ value: UInt8) -> Float {
+        Float(value) / 127.0
+    }
+
+    static func normalizedPitchBend(_ value: UInt16) -> Float {
+        (Float(value) - 8192.0) / 8192.0
+    }
+
+    static func pitchBendMIDIValue(from normalized: Float) -> UInt16 {
+        let clamped = max(-1, min(1, normalized))
+        return UInt16((clamped * 8192.0) + 8192.0)
+    }
+
+    static func pitchBendCents(from normalized: Float, range: Float = 200) -> Float {
+        max(-1, min(1, normalized)) * range
+    }
 }

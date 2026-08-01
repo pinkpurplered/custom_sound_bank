@@ -30,6 +30,7 @@ final class SampleRecorder: NSObject, ObservableObject {
 
     private var recorder: AVAudioRecorder?
     private var previewPlayer: AVAudioPlayer?
+    private var previewDelegate: PreviewDelegate?
     private var meterTimer: Timer?
     private var playbackStopTimer: Timer?
     private let maxDuration: TimeInterval = 10
@@ -95,12 +96,17 @@ final class SampleRecorder: NSObject, ObservableObject {
         guard let recordedURL else { return }
         stopPreview()
 
+        audioCoordinator?.suspendPerformanceAudio()
+        try configureSessionForPlayback()
+
         let player = try AVAudioPlayer(contentsOf: recordedURL)
-        player.delegate = PreviewDelegate { [weak self] in
+        let delegate = PreviewDelegate { [weak self] in
             Task { @MainActor in
                 self?.finishPreview()
             }
         }
+        previewDelegate = delegate
+        player.delegate = delegate
         player.prepareToPlay()
 
         let start = min(max(trimStart, 0), duration)
@@ -123,6 +129,7 @@ final class SampleRecorder: NSObject, ObservableObject {
         playbackStopTimer = nil
         previewPlayer?.stop()
         previewPlayer = nil
+        previewDelegate = nil
         if state == .playingBack {
             state = recordedURL == nil ? .idle : .recorded
         }
@@ -135,13 +142,20 @@ final class SampleRecorder: NSObject, ObservableObject {
 
     private func configureSessionForRecording() throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
         try session.setPreferredSampleRate(44_100)
         try session.setActive(true)
 
         if let builtInMic = session.availableInputs?.first(where: { $0.portType == .builtInMic }) {
             try session.setPreferredInput(builtInMic)
         }
+    }
+
+    private func configureSessionForPlayback() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
+        try session.setPreferredSampleRate(44_100)
+        try session.setActive(true)
     }
 
     private func startRecording() throws {
