@@ -23,6 +23,7 @@
 		4257593BC77FF722F5FAC430 /* MIDIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4890A61E78069E00FEDF1506 /* MIDIService.swift */; };
 		452BB3D23DD5066F46D398AA /* LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = E35BAA9566ADD498C423E7F9 /* LICENSE.txt */; };
 		4A76BB36E9839EFF45A1077D /* synth_lead.wav in Resources */ = {isa = PBXBuildFile; fileRef = 28C976A87DC8E9283316C611 /* synth_lead.wav */; };
+		4B01DE49C05064EBBB800B7E /* FreePats-PipeOrgan.sf2 in Resources */ = {isa = PBXBuildFile; fileRef = 378BC159C58AB0F37A7ED4D8 /* FreePats-PipeOrgan.sf2 */; };
 		4FD477DF63B2B123F582CD53 /* MIDIEventDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 347D6D817321098A95CAB8DE /* MIDIEventDecoderTests.swift */; };
 		54F317C4FF763652C7610C81 /* piano.wav in Resources */ = {isa = PBXBuildFile; fileRef = 45BBF4C945049797E9E27D7E /* piano.wav */; };
 		59954866E627700FE61171D9 /* SampleRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 477353484F8DBCB63692F509 /* SampleRecorder.swift */; };
@@ -70,6 +71,7 @@
 		302146260DB65D90D2574B56 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		33F4BABC8B1A08512117FF20 /* PerformComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformComponents.swift; sourceTree = "<group>"; };
 		347D6D817321098A95CAB8DE /* MIDIEventDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDIEventDecoderTests.swift; sourceTree = "<group>"; };
+		378BC159C58AB0F37A7ED4D8 /* FreePats-PipeOrgan.sf2 */ = {isa = PBXFileReference; path = "FreePats-PipeOrgan.sf2"; sourceTree = "<group>"; };
 		4309994F20202C3ECC8B9DCC /* YDP-GrandPiano.sf2 */ = {isa = PBXFileReference; path = "YDP-GrandPiano.sf2"; sourceTree = "<group>"; };
 		45BBF4C945049797E9E27D7E /* piano.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = piano.wav; sourceTree = "<group>"; };
 		45D54E4CE94F7FCF25B4C2E6 /* CustomSoundBankTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CustomSoundBankTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -173,6 +175,7 @@
 			children = (
 				2EBD616B99E813F2829ECCC8 /* FreePats-DrawbarOrgan.sf2 */,
 				F8D0F9D84280D827879E04D4 /* FreePats-PercussiveOrgan.sf2 */,
+				378BC159C58AB0F37A7ED4D8 /* FreePats-PipeOrgan.sf2 */,
 				8AFE90A56BCF570AEDCE3FE5 /* FreePats-RockOrgan.sf2 */,
 				F6DCFBDDFC437C4C0BEF3646 /* GeneralUser-GS.sf2 */,
 				E35BAA9566ADD498C423E7F9 /* LICENSE.txt */,
@@ -375,6 +378,7 @@
 				1355A197D5EA3EF6BB3DC64A /* Assets.xcassets in Resources */,
 				731BF42AB3ACE58C8360760C /* FreePats-DrawbarOrgan.sf2 in Resources */,
 				C40582BC09CC062127CC2C11 /* FreePats-PercussiveOrgan.sf2 in Resources */,
+				4B01DE49C05064EBBB800B7E /* FreePats-PipeOrgan.sf2 in Resources */,
 				74A918AD910D536A11948B15 /* FreePats-RockOrgan.sf2 in Resources */,
 				61F448B8CC0676C0B8C8F39F /* GeneralUser-GS.sf2 in Resources */,
 				452BB3D23DD5066F46D398AA /* LICENSE.txt in Resources */,

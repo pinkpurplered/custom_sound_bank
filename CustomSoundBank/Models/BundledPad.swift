@@ -57,7 +57,7 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
 
     private static let classicWAVFileNames: [String: String] = [
         "strings_ensemble": "strings",
-        "organ_drawbar": "organ",
+        "organ_church": "organ",
         "musicbox_classic": "musicbox",
         "synth_lead_saw": "synth_lead",
         "synth_pad_warm": "synth_pad",
@@ -84,13 +84,19 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
         BundledPad(id: "musicbox_tubular", displayName: "Tubular Bells", category: .musicBox, gmProgram: 14, soundFontFileName: nil),
         BundledPad(id: "musicbox_dulcimer", displayName: "Dulcimer", category: .musicBox, gmProgram: 15, soundFontFileName: nil),
 
-        // Organ (GM 16–21) — FreePats Hammond emulations for drawbar/percussive/rock
-        BundledPad(id: "organ_drawbar", displayName: "Drawbar Organ", category: .organ, gmProgram: 0, soundFontFileName: "FreePats-DrawbarOrgan"),
-        BundledPad(id: "organ_percussive", displayName: "Percussive Organ", category: .organ, gmProgram: 0, soundFontFileName: "FreePats-PercussiveOrgan"),
-        BundledPad(id: "organ_rock", displayName: "Rock Organ", category: .organ, gmProgram: 0, soundFontFileName: "FreePats-RockOrgan"),
+        // Organ (GM 16–21) — classic GeneralUser-GS
+        BundledPad(id: "organ_drawbar", displayName: "Drawbar Organ", category: .organ, gmProgram: 16, soundFontFileName: nil),
+        BundledPad(id: "organ_percussive", displayName: "Percussive Organ", category: .organ, gmProgram: 17, soundFontFileName: nil),
+        BundledPad(id: "organ_rock", displayName: "Rock Organ", category: .organ, gmProgram: 18, soundFontFileName: nil),
         BundledPad(id: "organ_church", displayName: "Church Organ", category: .organ, gmProgram: 19, soundFontFileName: nil),
         BundledPad(id: "organ_reed", displayName: "Reed Organ", category: .organ, gmProgram: 20, soundFontFileName: nil),
         BundledPad(id: "organ_accordion", displayName: "Accordion", category: .organ, gmProgram: 21, soundFontFileName: nil),
+
+        // FreePats Hammond & pipe organ emulations (CC0) — J-pop/J-rock additions
+        BundledPad(id: "organ_hammond_drawbar", displayName: "Hammond Drawbar", category: .organ, gmProgram: 0, soundFontFileName: "FreePats-DrawbarOrgan"),
+        BundledPad(id: "organ_hammond_percussive", displayName: "Hammond Percussive", category: .organ, gmProgram: 0, soundFontFileName: "FreePats-PercussiveOrgan"),
+        BundledPad(id: "organ_hammond_rock", displayName: "Hammond Rock", category: .organ, gmProgram: 0, soundFontFileName: "FreePats-RockOrgan"),
+        BundledPad(id: "organ_pipe_aeolus", displayName: "Pipe Organ", category: .organ, gmProgram: 0, soundFontFileName: "FreePats-PipeOrgan"),
 
         // Guitar (GM 24–31)
         BundledPad(id: "guitar_nylon", displayName: "Nylon Guitar", category: .guitar, gmProgram: 24, soundFontFileName: nil),
@@ -207,7 +213,7 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
     static let defaultFavoritePadIDs: [String] = [
         "piano_grand",
         "strings_ensemble",
-        "organ_drawbar",
+        "organ_church",
         "musicbox_classic",
         "synth_lead_saw",
         "synth_pad_warm",

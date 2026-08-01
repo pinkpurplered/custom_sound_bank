@@ -24,7 +24,7 @@ I can be reached at: s_chriscollins@hotmail.com.
 Thank you!
 -~Chris
 
-*** FreePats Organ Emulations (Drawbar, Percussive, Rock) ***
-Source: https://freepats.zenvoid.org/Organ/electric-organ.html
+*** FreePats Organ Emulations (Drawbar, Percussive, Rock, Pipe) ***
+Source: https://freepats.zenvoid.org/Organ/
 License: Creative Commons CC0 1.0 (public domain dedication)
-Recorded from setBfree software synthesizer by the FreePats project.
+Drawbar/Percussive/Rock recorded from setBfree; Pipe Organ recorded from Aeolus.
