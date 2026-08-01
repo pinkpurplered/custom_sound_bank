@@ -29,6 +29,7 @@
 		7E52973C338B4A1F1FE4BBB6 /* organ.wav in Resources */ = {isa = PBXBuildFile; fileRef = 9442D13DE3DBCA5C9600FB0D /* organ.wav */; };
 		8207145A5616151D634392E8 /* InstrumentKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECC204971A0FDF0909CB129C /* InstrumentKind.swift */; };
 		8268D6AE458DB5A4D48EF10D /* UserSampleVoicePool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD00D1B09955EAF5C792036 /* UserSampleVoicePool.swift */; };
+		928FF984667BE6533B59811E /* SampleVoicePool.swift in Sources */ = {isa = PBXBuildFile; fileRef = B771542AF8EFA3DA45A9F215 /* SampleVoicePool.swift */; };
 		96BD4C393938F2E4BC4184C7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6249C4EE067B13242E99AA9B /* ContentView.swift */; };
 		A27B1C6FF0F32698B96E58BE /* CustomSoundBankApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 550839458455FDB3D75D4104 /* CustomSoundBankApp.swift */; };
 		A61BEC09C29697F11374D504 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE3F5B77B79F6B7AC0F1C84 /* AppModel.swift */; };
@@ -72,6 +73,7 @@
 		9442D13DE3DBCA5C9600FB0D /* organ.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = organ.wav; sourceTree = "<group>"; };
 		9A87B78AD822AFC1BC8113FE /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		B1F52CA9FA3B44C926E4D376 /* SampleLibraryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleLibraryStoreTests.swift; sourceTree = "<group>"; };
+		B771542AF8EFA3DA45A9F215 /* SampleVoicePool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleVoicePool.swift; sourceTree = "<group>"; };
 		D51F55C5B73568FE21B4AE97 /* SampleLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleLibraryStore.swift; sourceTree = "<group>"; };
 		D9E954A3C1500ADE6C3AB28A /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		DB48C2AA160E143A31A30EE3 /* CustomSoundBank.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CustomSoundBank.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -191,6 +193,7 @@
 			children = (
 				73D8C865B7A9216E000D07F7 /* BundledInstrumentSampler.swift */,
 				466A57B18C3B6F06312D99A5 /* InstrumentRouter.swift */,
+				B771542AF8EFA3DA45A9F215 /* SampleVoicePool.swift */,
 				4FD00D1B09955EAF5C792036 /* UserSampleVoicePool.swift */,
 			);
 			path = Instruments;
@@ -367,6 +370,7 @@
 				2FC8136E6349FB601B521633 /* PerformView.swift in Sources */,
 				786D0F41ECC90F126FCC738B /* SampleLibraryStore.swift in Sources */,
 				59954866E627700FE61171D9 /* SampleRecorder.swift in Sources */,
+				928FF984667BE6533B59811E /* SampleVoicePool.swift in Sources */,
 				8268D6AE458DB5A4D48EF10D /* UserSampleVoicePool.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -60,6 +60,10 @@ struct PerformView: View {
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            } else if let loaded = appModel.instrumentRouter.loadedBundledKind {
+                Label("Playing: \(loaded.displayName)", systemImage: loaded.iconName)
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.accent)
             }
         }
     }

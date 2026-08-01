@@ -3,14 +3,13 @@ import Foundation
 
 @MainActor
 final class BundledInstrumentSampler {
-    private var sampler = AVAudioUnitSampler()
-    private var loadedKind: InstrumentKind?
+    private let mixer = AVAudioMixerNode()
+    private var voicePool: SampleVoicePool?
+    private(set) var loadedKind: InstrumentKind?
 
-    var node: AVAudioNode { sampler }
+    var node: AVAudioNode { mixer }
 
     func load(kind: InstrumentKind, into audioEngine: AudioEngineController) throws {
-        guard loadedKind != kind else { return }
-
         guard let fileName = kind.bundledFileName else {
             throw NSError(domain: "BundledInstrumentSampler", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "No bundled asset for \(kind.displayName)"
@@ -25,17 +24,18 @@ final class BundledInstrumentSampler {
 
         allNotesOff()
 
-        try audioEngine.mutateGraph {
-            if audioEngine.engine.attachedNodes.contains(sampler) {
-                audioEngine.detach(node: sampler)
-            }
-
-            let newSampler = AVAudioUnitSampler()
-            try newSampler.loadAudioFiles(at: [sampleURL])
-            sampler = newSampler
-            loadedKind = kind
-            audioEngine.attach(node: sampler)
+        if voicePool == nil {
+            audioEngine.attach(node: mixer)
+            voicePool = SampleVoicePool(engine: audioEngine.engine, mixer: mixer)
         }
+
+        let sample = UserSampleInstrument(
+            name: kind.displayName,
+            fileName: "\(fileName).wav",
+            rootNote: 60
+        )
+        try voicePool?.load(sample: sample, from: sampleURL)
+        loadedKind = kind
     }
 
     private static func sampleURL(fileName: String) -> URL? {
@@ -44,16 +44,14 @@ final class BundledInstrumentSampler {
     }
 
     func noteOn(note: UInt8, velocity: UInt8) {
-        sampler.startNote(note, withVelocity: velocity, onChannel: 0)
+        voicePool?.noteOn(note: note, velocity: velocity)
     }
 
     func noteOff(note: UInt8) {
-        sampler.stopNote(note, onChannel: 0)
+        voicePool?.noteOff(note: note)
     }
 
     func allNotesOff() {
-        for note: UInt8 in 0...127 {
-            sampler.stopNote(note, onChannel: 0)
-        }
+        voicePool?.allNotesOff()
     }
 }
