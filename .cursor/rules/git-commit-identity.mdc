@@ -1,0 +1,34 @@
+---
+description: Git commit author identity for this repository
+alwaysApply: true
+---
+
+# Git Commit Identity
+
+All commits in this repository must use **PinkPurpleRed** as the author and committer name.
+
+## Required identity
+
+- **Name:** `PinkPurpleRed`
+- **Never use:** `Evelyn`, `CursorAgent`, `Cursor`, or any other author name
+- **Never add** `Co-authored-by` trailers (especially `Co-authored-by: Cursor <cursoragent@cursor.com>`)
+
+## When creating commits
+
+Before committing, ensure the local repo identity is set:
+
+```bash
+git config --local user.name "PinkPurpleRed"
+```
+
+If local config is missing or wrong, set it before `git commit`. You may also pass identity explicitly:
+
+```bash
+GIT_AUTHOR_NAME="PinkPurpleRed" GIT_COMMITTER_NAME="PinkPurpleRed" git commit ...
+```
+
+## When rewriting history
+
+If commits were made with the wrong author or co-author trailers, rewrite them before pushing. Do not leave Evelyn, CursorAgent, or Cursor co-author lines in commit history or contributor attribution.
+
+This repo uses `.githooks/commit-msg` (via `core.hooksPath`) to strip `Co-authored-by: Cursor` lines automatically. Do not disable it.
