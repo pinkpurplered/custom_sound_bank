@@ -1,7 +1,6 @@
 import AVFoundation
 import Foundation
 
-@MainActor
 final class AudioEngineController: ObservableObject {
     @Published private(set) var routeSnapshot = AudioRouteSnapshot(
         outputName: "Unknown",
@@ -23,11 +22,7 @@ final class AudioEngineController: ObservableObject {
     }
 
     func start() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
-        try session.setPreferredSampleRate(44_100)
-        try session.setPreferredIOBufferDuration(0.005)
-        try session.setActive(true)
+        try configurePerformanceSession()
 
         guard !engine.isRunning else {
             refreshRouteSnapshot()
@@ -36,6 +31,14 @@ final class AudioEngineController: ObservableObject {
         engine.prepare()
         try engine.start()
         refreshRouteSnapshot()
+    }
+
+    func configurePerformanceSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback, mode: .default, options: [])
+        try session.setPreferredSampleRate(44_100)
+        try session.setPreferredIOBufferDuration(0.0029)
+        try session.setActive(true)
     }
 
     func stop() {
@@ -119,11 +122,18 @@ final class AudioEngineController: ObservableObject {
         let external = session.currentRoute.outputs.contains {
             $0.portType == .usbAudio || $0.portType == .headphones || $0.portType == .bluetoothA2DP
         }
-        routeSnapshot = AudioRouteSnapshot(
+        let snapshot = AudioRouteSnapshot(
             outputName: outputs.isEmpty ? "None" : outputs,
             inputName: inputs.isEmpty ? "Built-in Mic" : inputs,
             sampleRate: session.sampleRate,
             isExternalOutput: external
         )
+        if Thread.isMainThread {
+            routeSnapshot = snapshot
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.routeSnapshot = snapshot
+            }
+        }
     }
 }

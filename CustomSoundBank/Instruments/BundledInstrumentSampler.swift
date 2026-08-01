@@ -2,11 +2,15 @@ import AudioToolbox
 import AVFoundation
 import Foundation
 
-@MainActor
 final class BundledInstrumentSampler {
     private var sampler = AVAudioUnitSampler()
+    private(set) var loadedPadID: String?
 
     var node: AVAudioNode { sampler }
+
+    func setVolume(_ volume: Float) {
+        sampler.volume = max(0, min(1, volume))
+    }
 
     func load(pad: BundledPad, into audioEngine: AudioEngineController) throws {
         allNotesOff()
@@ -32,8 +36,10 @@ final class BundledInstrumentSampler {
                 bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
                 bankLSB: UInt8(kAUSampler_DefaultBankLSB)
             )
+            newSampler.volume = sampler.volume
             sampler = newSampler
         }
+        loadedPadID = pad.id
     }
 
     func noteOn(note: UInt8, velocity: UInt8) {
@@ -44,12 +50,13 @@ final class BundledInstrumentSampler {
         sampler.stopNote(note, onChannel: 0)
     }
 
-    func setModulation(_ value: UInt8) {
-        sampler.sendController(1, withValue: value, onChannel: 0)
+    func setModulation(_ value: Float) {
+        let midiValue = UInt8(max(0, min(127, Int(value * 127))))
+        sampler.sendController(1, withValue: midiValue, onChannel: 0)
     }
 
-    func setPitchBend(_ value: UInt16) {
-        sampler.sendPitchBend(value, onChannel: 0)
+    func setPitchBend(_ normalized: Float) {
+        sampler.sendPitchBend(MIDIUtilities.pitchBendMIDIValue(from: normalized), onChannel: 0)
     }
 
     func allNotesOff() {

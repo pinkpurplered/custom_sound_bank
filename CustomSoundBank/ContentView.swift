@@ -5,7 +5,7 @@ struct ContentView: View {
         TabView {
             PerformView()
                 .tabItem {
-                    Label("Live", systemImage: "bolt.fill")
+                    Label("Live", systemImage: "lightbulb.fill")
                 }
 
             BrowsePadsView()

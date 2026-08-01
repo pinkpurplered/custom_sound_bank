@@ -3,12 +3,13 @@ import CoreMIDI
 import Combine
 
 private final class MIDIPortReadContext: @unchecked Sendable {
-    var onEvent: ((MIDINoteEvent) -> Void)?
+    var performanceHandler: ((MIDINoteEvent) -> Void)?
+    var uiHandler: ((MIDINoteEvent) -> Void)?
 
     func deliver(_ events: [MIDINoteEvent]) {
-        guard let onEvent else { return }
         for event in events {
-            onEvent(event)
+            performanceHandler?(event)
+            uiHandler?(event)
         }
     }
 }
@@ -21,18 +22,27 @@ final class MIDIService: ObservableObject {
     @Published private(set) var receivedEventCount = 0
     @Published private(set) var lastReceivedEventDescription: String?
 
+    func setEventHandlers(
+        performance: @escaping (MIDINoteEvent) -> Void,
+        ui: @escaping (MIDINoteEvent) -> Void
+    ) {
+        readContext.performanceHandler = performance
+        readContext.uiHandler = ui
+    }
+
+    func recordReceivedEvent(_ event: MIDINoteEvent) {
+        receivedEventCount += 1
+        lastReceivedEventDescription = Self.describe(event)
+    }
+
     var onEvent: ((MIDINoteEvent) -> Void)? {
-        get { readContext.onEvent }
+        get { nil }
         set {
             if let newValue {
-                readContext.onEvent = { [weak self] event in
-                    newValue(event)
-                    Task { @MainActor [weak self] in
-                        self?.recordReceivedEvent(event)
-                    }
-                }
+                setEventHandlers(performance: newValue, ui: newValue)
             } else {
-                readContext.onEvent = nil
+                readContext.performanceHandler = nil
+                readContext.uiHandler = nil
             }
         }
     }
@@ -146,10 +156,6 @@ final class MIDIService: ObservableObject {
         context.deliver(events)
     }
 
-    private func recordReceivedEvent(_ event: MIDINoteEvent) {
-        receivedEventCount += 1
-        lastReceivedEventDescription = Self.describe(event)
-    }
 
     private static func describe(_ event: MIDINoteEvent) -> String {
         switch event.kind {

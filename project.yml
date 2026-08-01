@@ -31,6 +31,8 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UIBackgroundModes:
           - audio
         NSMicrophoneUsageDescription: Custom Sound Bank records short samples from the iPhone microphone so you can play them from your MIDI controller.
