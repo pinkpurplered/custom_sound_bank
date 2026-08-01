@@ -17,6 +17,7 @@ final class AudioEngineController: ObservableObject {
 
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
+    private weak var connectedInstrumentRoot: AVAudioNode?
 
     init() {
         engine.attach(mainMixer)
@@ -76,12 +77,23 @@ final class AudioEngineController: ObservableObject {
 
     func connectInstrument(_ node: AVAudioNode) throws {
         try mutateGraph {
-            for attached in engine.attachedNodes where attached !== mainMixer && attached !== engine.outputNode {
-                if attached is AVAudioUnitSampler || attached is AVAudioPlayerNode {
-                    detach(node: attached)
-                }
+            if let connectedInstrumentRoot,
+               connectedInstrumentRoot !== node,
+               engine.attachedNodes.contains(connectedInstrumentRoot) {
+                engine.disconnectNodeOutput(connectedInstrumentRoot)
             }
-            attach(node: node)
+
+            if !engine.attachedNodes.contains(node) {
+                engine.attach(node)
+            }
+
+            let outputs = engine.outputConnectionPoints(for: node, outputBus: 0)
+            let connectedToMainMixer = outputs.contains { $0.node === mainMixer }
+            if !connectedToMainMixer {
+                engine.connect(node, to: mainMixer, format: nil)
+            }
+
+            connectedInstrumentRoot = node
         }
     }
 

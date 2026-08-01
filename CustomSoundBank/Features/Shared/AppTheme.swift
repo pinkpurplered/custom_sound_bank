@@ -149,7 +149,7 @@ private struct PianoKeyView: View {
             }
         }
         .frame(width: width, height: height)
-        .gesture(
+        .simultaneousGesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in
                     if !isPressed {
@@ -158,8 +158,10 @@ private struct PianoKeyView: View {
                     }
                 }
                 .onEnded { _ in
-                    isPressed = false
-                    onRelease()
+                    if isPressed {
+                        isPressed = false
+                        onRelease()
+                    }
                 }
         )
     }

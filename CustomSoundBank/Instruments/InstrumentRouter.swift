@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 final class InstrumentRouter: ObservableObject {
     @Published private(set) var selectedInstrument: SelectedInstrument = .bundled(.piano)
+    @Published private(set) var loadedBundledKind: InstrumentKind?
     @Published private(set) var activeNotes = Set<UInt8>()
     @Published private(set) var lastError: String?
 
@@ -16,16 +17,16 @@ final class InstrumentRouter: ObservableObject {
 
     func configure(audioEngine: AudioEngineController) {
         self.audioEngine = audioEngine
-        audioEngine.attach(node: userMixer)
     }
 
     func selectBundled(_ kind: InstrumentKind) {
         do {
             guard let audioEngine else { return }
+            allNotesOff()
             try bundledSampler.load(kind: kind, into: audioEngine)
             try audioEngine.connectInstrument(bundledSampler.node)
+            loadedBundledKind = bundledSampler.loadedKind
             selectedInstrument = .bundled(kind)
-            allNotesOff()
             lastError = nil
         } catch {
             lastError = error.localizedDescription
@@ -37,11 +38,13 @@ final class InstrumentRouter: ObservableObject {
             do {
                 guard let audioEngine else { return }
                 if userVoicePool == nil {
-                    userVoicePool = UserSampleVoicePool(engine: audioEngine.engine, mixer: userMixer)
+                    audioEngine.attach(node: userMixer)
+                    userVoicePool = SampleVoicePool(engine: audioEngine.engine, mixer: userMixer)
                 }
                 try userVoicePool?.load(sample: sample, from: fileURL)
                 try audioEngine.connectInstrument(userMixer)
                 selectedInstrument = .user(sample)
+                loadedBundledKind = nil
                 allNotesOff()
                 lastError = nil
             } catch {
