@@ -19,6 +19,8 @@ targets:
         excludes:
           - Info.plist
     resources:
+      - path: CustomSoundBank/Resources/SoundBanks
+        buildPhase: resources
       - path: CustomSoundBank/Assets.xcassets
     info:
       path: CustomSoundBank/Info.plist

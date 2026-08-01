@@ -23,6 +23,7 @@
 		4FD477DF63B2B123F582CD53 /* MIDIEventDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 347D6D817321098A95CAB8DE /* MIDIEventDecoderTests.swift */; };
 		54F317C4FF763652C7610C81 /* piano.wav in Resources */ = {isa = PBXBuildFile; fileRef = 45BBF4C945049797E9E27D7E /* piano.wav */; };
 		59954866E627700FE61171D9 /* SampleRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 477353484F8DBCB63692F509 /* SampleRecorder.swift */; };
+		61F448B8CC0676C0B8C8F39F /* GeneralUser-GS.sf2 in Resources */ = {isa = PBXBuildFile; fileRef = F6DCFBDDFC437C4C0BEF3646 /* GeneralUser-GS.sf2 */; };
 		786D0F41ECC90F126FCC738B /* SampleLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D51F55C5B73568FE21B4AE97 /* SampleLibraryStore.swift */; };
 		7E52973C338B4A1F1FE4BBB6 /* organ.wav in Resources */ = {isa = PBXBuildFile; fileRef = 9442D13DE3DBCA5C9600FB0D /* organ.wav */; };
 		8207145A5616151D634392E8 /* InstrumentKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECC204971A0FDF0909CB129C /* InstrumentKind.swift */; };
@@ -75,6 +76,7 @@
 		DB48C2AA160E143A31A30EE3 /* CustomSoundBank.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CustomSoundBank.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E9F91C1F606999D6794745BA /* CreateSampleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateSampleView.swift; sourceTree = "<group>"; };
 		ECC204971A0FDF0909CB129C /* InstrumentKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentKind.swift; sourceTree = "<group>"; };
+		F6DCFBDDFC437C4C0BEF3646 /* GeneralUser-GS.sf2 */ = {isa = PBXFileReference; path = "GeneralUser-GS.sf2"; sourceTree = "<group>"; };
 		F9A8C584B471D6B7D4425942 /* strings.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = strings.wav; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -144,6 +146,7 @@
 		76B71CB7B882DC3616F7A799 /* SoundBanks */ = {
 			isa = PBXGroup;
 			children = (
+				F6DCFBDDFC437C4C0BEF3646 /* GeneralUser-GS.sf2 */,
 				10894BCF9A1225221BBA6FEA /* musicbox.wav */,
 				9442D13DE3DBCA5C9600FB0D /* organ.wav */,
 				45BBF4C945049797E9E27D7E /* piano.wav */,
@@ -326,6 +329,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1355A197D5EA3EF6BB3DC64A /* Assets.xcassets in Resources */,
+				61F448B8CC0676C0B8C8F39F /* GeneralUser-GS.sf2 in Resources */,
 				C89728A289BE391DA5DCB44F /* musicbox.wav in Resources */,
 				7E52973C338B4A1F1FE4BBB6 /* organ.wav in Resources */,
 				54F317C4FF763652C7610C81 /* piano.wav in Resources */,

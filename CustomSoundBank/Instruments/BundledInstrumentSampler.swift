@@ -4,7 +4,8 @@ import Foundation
 
 @MainActor
 final class BundledInstrumentSampler {
-    private static let generalMIDIBankPath =
+    private static let bundledBankName = "GeneralUser-GS"
+    private static let systemBankPath =
         "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls"
 
     private let sampler = AVAudioUnitSampler()
@@ -22,10 +23,9 @@ final class BundledInstrumentSampler {
             ])
         }
 
-        let bankURL = URL(fileURLWithPath: Self.generalMIDIBankPath)
-        guard FileManager.default.fileExists(atPath: bankURL.path) else {
+        guard let bankURL = Self.soundBankURL() else {
             throw NSError(domain: "BundledInstrumentSampler", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "System General MIDI bank is unavailable."
+                NSLocalizedDescriptionKey: "Bundled General MIDI sound bank is missing from the app."
             ])
         }
 
@@ -36,6 +36,22 @@ final class BundledInstrumentSampler {
             bankLSB: UInt8(kAUSampler_DefaultBankLSB)
         )
         loadedKind = kind
+    }
+
+    private static func soundBankURL() -> URL? {
+        if let bundled = Bundle.main.url(
+            forResource: bundledBankName,
+            withExtension: "sf2",
+            subdirectory: "SoundBanks"
+        ) ?? Bundle.main.url(forResource: bundledBankName, withExtension: "sf2") {
+            return bundled
+        }
+
+        let systemURL = URL(fileURLWithPath: systemBankPath)
+        if FileManager.default.fileExists(atPath: systemURL.path) {
+            return systemURL
+        }
+        return nil
     }
 
     func noteOn(note: UInt8, velocity: UInt8) {
