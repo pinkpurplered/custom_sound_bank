@@ -17,6 +17,7 @@ struct FavoritePadCell: View {
     let color: Color
     let isSelected: Bool
     let volume: Float
+    var layeredPad: BundledPad? = nil
     let onSelect: () -> Void
     let onVolumeChange: (Float) -> Void
 
@@ -58,14 +59,103 @@ struct FavoritePadCell: View {
             }
 
             if showVolume {
-                Slider(value: Binding(
-                    get: { volume },
-                    set: { onVolumeChange($0) }
-                ), in: 0...1)
-                .tint(color)
-                .controlSize(.mini)
+                if let layeredPad {
+                    LayerVolumeControls(
+                        layeredPad: layeredPad,
+                        labelWidth: 40,
+                        valueWidth: 20
+                    )
+                } else {
+                    Slider(value: Binding(
+                        get: { volume },
+                        set: { onVolumeChange($0) }
+                    ), in: 0...1)
+                    .tint(color)
+                    .controlSize(.mini)
+                }
             }
         }
+    }
+}
+
+struct LayerVolumeControls: View {
+    @EnvironmentObject private var appModel: AppModel
+    let layeredPad: BundledPad
+    var labelWidth: CGFloat = 52
+    var valueWidth: CGFloat = 24
+    var labelFont: Font = .caption2.weight(.semibold)
+
+    var body: some View {
+        VStack(spacing: 4) {
+            ForEach(layeredPad.layers ?? [], id: \.padID) { spec in
+                if let layerPad = BundledPad.pad(withID: spec.padID) {
+                    HStack(spacing: 6) {
+                        Text(layerPad.layerVolumeLabel)
+                            .font(labelFont)
+                            .foregroundStyle(.secondary)
+                            .frame(width: labelWidth, alignment: .leading)
+
+                        Slider(
+                            value: Binding(
+                                get: { appModel.layerVolume(forLayerPadID: spec.padID, in: layeredPad) },
+                                set: { appModel.setLayerVolume($0, forLayerPadID: spec.padID, in: layeredPad) }
+                            ),
+                            in: 0...1
+                        )
+                        .tint(AppTheme.accent)
+
+                        Text("\(Int(appModel.layerVolume(forLayerPadID: spec.padID, in: layeredPad) * 100))")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(width: valueWidth, alignment: .trailing)
+                    }
+                    .frame(height: 24)
+                }
+            }
+        }
+    }
+}
+
+struct TransposeControl: View {
+    @Binding var semitones: Int
+    var range: ClosedRange<Int> = -12...12
+    var prominent = false
+
+    var body: some View {
+        HStack(spacing: prominent ? 10 : 6) {
+            Text("Key")
+                .font(prominent ? .subheadline.weight(.semibold) : .caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Button {
+                semitones = max(range.lowerBound, semitones - 1)
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .font(prominent ? .title3 : .body)
+                    .foregroundStyle(semitones > range.lowerBound ? AppTheme.accent : .secondary)
+            }
+            .buttonStyle(.plain)
+            .disabled(semitones <= range.lowerBound)
+
+            Text(displayText)
+                .font(prominent ? .headline.monospacedDigit() : .caption.monospacedDigit().weight(.semibold))
+                .frame(minWidth: prominent ? 44 : 32)
+
+            Button {
+                semitones = min(range.upperBound, semitones + 1)
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(prominent ? .title3 : .body)
+                    .foregroundStyle(semitones < range.upperBound ? AppTheme.accent : .secondary)
+            }
+            .buttonStyle(.plain)
+            .disabled(semitones >= range.upperBound)
+        }
+    }
+
+    private var displayText: String {
+        if semitones == 0 { return "0" }
+        return semitones > 0 ? "+\(semitones)" : "\(semitones)"
     }
 }
 
@@ -155,6 +245,7 @@ struct PerformPadsGrid: View {
     let gridSpacing: CGFloat
     let minCellHeight: CGFloat
     let columnRange: ClosedRange<Int>
+    let emptyMessage: String
     let cellContent: (FavoritePadItem) -> AnyView
 
     init(
@@ -162,12 +253,14 @@ struct PerformPadsGrid: View {
         gridSpacing: CGFloat = 3,
         minCellHeight: CGFloat = 36,
         columnRange: ClosedRange<Int> = 3...5,
+        emptyMessage: String = "Go to Sound Samples and tap ★ to pin sounds here.",
         @ViewBuilder cellContent: @escaping (FavoritePadItem) -> some View
     ) {
         self.favorites = favorites
         self.gridSpacing = gridSpacing
         self.minCellHeight = minCellHeight
         self.columnRange = columnRange
+        self.emptyMessage = emptyMessage
         self.cellContent = { AnyView(cellContent($0)) }
     }
 
@@ -176,8 +269,8 @@ struct PerformPadsGrid: View {
             if favorites.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "star").font(.largeTitle).foregroundStyle(.secondary)
-                    Text("No favorites yet").font(.headline)
-                    Text("Go to Sound Samples and tap ★ to pin sounds here.")
+                    Text("No sounds in this set").font(.headline)
+                    Text(emptyMessage)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -185,33 +278,84 @@ struct PerformPadsGrid: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 let layout = gridLayout(itemCount: favorites.count, availableSize: geometry.size)
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: layout.columns),
-                    spacing: gridSpacing
-                ) {
-                    ForEach(favorites) { item in
-                        cellContent(item).frame(height: layout.cellHeight)
+                let rows = chunked(favorites, columns: layout.columns)
+                VStack(spacing: gridSpacing) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, rowItems in
+                        HStack(spacing: gridSpacing) {
+                            if rowItems.count < layout.columns {
+                                Spacer(minLength: 0)
+                            }
+                            ForEach(rowItems) { item in
+                                cellContent(item)
+                                    .frame(width: layout.cellWidth, height: layout.cellHeight)
+                            }
+                            if rowItems.count < layout.columns {
+                                Spacer(minLength: 0)
+                            }
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
         }
     }
 
-    private func gridLayout(itemCount: Int, availableSize: CGSize) -> (columns: Int, cellHeight: CGFloat) {
-        var bestColumns = columnRange.lowerBound
-        var bestCellHeight: CGFloat = 0
-        for columns in columnRange {
+    private func chunked(_ items: [FavoritePadItem], columns: Int) -> [[FavoritePadItem]] {
+        guard columns > 0 else { return [items] }
+        return stride(from: 0, to: items.count, by: columns).map { start in
+            Array(items[start..<min(start + columns, items.count)])
+        }
+    }
+
+    private struct GridLayoutMetrics {
+        let columns: Int
+        let rows: Int
+        let cellWidth: CGFloat
+        let cellHeight: CGFloat
+    }
+
+    private func gridLayout(itemCount: Int, availableSize: CGSize) -> GridLayoutMetrics {
+        guard itemCount > 0 else {
+            return GridLayoutMetrics(
+                columns: columnRange.lowerBound,
+                rows: 0,
+                cellWidth: 0,
+                cellHeight: minCellHeight
+            )
+        }
+
+        let upperBound = min(itemCount, columnRange.upperBound)
+        let lowerBound = max(1, min(columnRange.lowerBound, itemCount))
+
+        var bestColumns = lowerBound
+        var bestWaste = Int.max
+        var bestCellSize: CGFloat = -1
+        var bestBalance = Int.max
+
+        for columns in lowerBound...upperBound {
             let rows = Int(ceil(Double(itemCount) / Double(columns)))
+            let waste = columns * rows - itemCount
             let cellWidth = (availableSize.width - gridSpacing * CGFloat(columns - 1)) / CGFloat(columns)
             let cellHeight = (availableSize.height - gridSpacing * CGFloat(rows - 1)) / CGFloat(rows)
-            let size = min(cellWidth, cellHeight)
-            if size > bestCellHeight {
-                bestCellHeight = size
+            let cellSize = min(cellWidth, cellHeight)
+            let balance = abs(columns - rows)
+
+            let isBetter = waste < bestWaste
+                || (waste == bestWaste && cellSize > bestCellSize + 0.5)
+                || (waste == bestWaste && abs(cellSize - bestCellSize) <= 0.5 && balance < bestBalance)
+
+            if isBetter {
                 bestColumns = columns
+                bestWaste = waste
+                bestCellSize = cellSize
+                bestBalance = balance
             }
         }
+
         let rows = Int(ceil(Double(itemCount) / Double(bestColumns)))
-        let cellHeight = (availableSize.height - gridSpacing * CGFloat(rows - 1)) / CGFloat(rows)
-        return (bestColumns, max(cellHeight, minCellHeight))
+        let cellWidth = (availableSize.width - gridSpacing * CGFloat(bestColumns - 1)) / CGFloat(bestColumns)
+        let rawCellHeight = (availableSize.height - gridSpacing * CGFloat(rows - 1)) / CGFloat(rows)
+        let cellHeight = max(rawCellHeight, minCellHeight)
+        return GridLayoutMetrics(columns: bestColumns, rows: rows, cellWidth: cellWidth, cellHeight: cellHeight)
     }
 }

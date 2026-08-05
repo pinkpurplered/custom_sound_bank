@@ -16,6 +16,7 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
     private var instrumentVolume: Float = 1
     private var modulation: Float = 0
     private var pitchBend: Float = 0
+    private var transposeSemitones: Int = 0
     private var midiChannelFilter: UInt8 = 0
 
     func configure(audioEngine: AudioEngineController) {
@@ -30,7 +31,7 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         midiChannelFilter = channel
     }
 
-    func selectBundled(_ pad: BundledPad) throws {
+    func selectBundled(_ pad: BundledPad, layerVolumeOverrides: [String: Float] = [:]) throws {
         lock.lock()
         defer { lock.unlock() }
         guard let audioEngine else {
@@ -42,7 +43,8 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         if let layerSpecs = pad.layers {
             let resolvedLayers = layerSpecs.compactMap { spec -> (BundledPad, Float)? in
                 guard let layerPad = BundledPad.pad(withID: spec.padID) else { return nil }
-                return (layerPad, spec.volume)
+                let volume = layerVolumeOverrides[spec.padID] ?? spec.volume
+                return (layerPad, volume)
             }
             guard !resolvedLayers.isEmpty else {
                 throw NSError(domain: "InstrumentPerformanceCore", code: 2, userInfo: [
@@ -92,6 +94,12 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         applyInstrumentVolumeLocked()
     }
 
+    func setLayerVolume(layerPadID: String, volume: Float) {
+        lock.lock()
+        defer { lock.unlock() }
+        layeredSampler.setLayerVolume(padID: layerPadID, volume: volume)
+    }
+
     func setModulation(_ value: Float) {
         lock.lock()
         defer { lock.unlock() }
@@ -104,6 +112,12 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         defer { lock.unlock() }
         pitchBend = max(-1, min(1, value))
         applyPitchBendLocked()
+    }
+
+    func setTransposeSemitones(_ semitones: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+        transposeSemitones = max(-12, min(12, semitones))
     }
 
     func handleMIDI(_ event: MIDINoteEvent) {
@@ -159,15 +173,16 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
 
     private func noteOnLocked(note: UInt8, velocity: UInt8) {
         sustainedNotes.remove(note)
+        let transposedNote = transposed(note)
         switch selectedInstrument {
         case .bundled:
             if usingLayeredSampler {
-                layeredSampler.noteOn(note: note, velocity: velocity)
+                layeredSampler.noteOn(note: transposedNote, velocity: velocity)
             } else {
-                bundledSampler.noteOn(note: note, velocity: velocity)
+                bundledSampler.noteOn(note: transposedNote, velocity: velocity)
             }
         case .user:
-            userVoicePool?.noteOn(note: note, velocity: velocity)
+            userVoicePool?.noteOn(note: transposedNote, velocity: velocity)
         }
     }
 
@@ -176,16 +191,21 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
             sustainedNotes.insert(note)
             return
         }
+        let transposedNote = transposed(note)
         switch selectedInstrument {
         case .bundled:
             if usingLayeredSampler {
-                layeredSampler.noteOff(note: note)
+                layeredSampler.noteOff(note: transposedNote)
             } else {
-                bundledSampler.noteOff(note: note)
+                bundledSampler.noteOff(note: transposedNote)
             }
         case .user:
-            userVoicePool?.noteOff(note: note)
+            userVoicePool?.noteOff(note: transposedNote)
         }
+    }
+
+    private func transposed(_ note: UInt8) -> UInt8 {
+        MIDIUtilities.transposedNote(note, by: transposeSemitones)
     }
 
     private func setSustainLocked(_ isDown: Bool) {

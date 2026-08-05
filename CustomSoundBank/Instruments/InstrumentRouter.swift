@@ -8,6 +8,7 @@ final class InstrumentRouter: ObservableObject {
     @Published private(set) var lastError: String?
     @Published private(set) var modulation: Float = 0
     @Published private(set) var pitchBend: Float = 0
+    @Published private(set) var transposeSemitones: Int = 0
 
     let performanceCore = InstrumentPerformanceCore()
 
@@ -22,9 +23,9 @@ final class InstrumentRouter: ObservableObject {
         performanceCore.configure(audioEngine: audioEngine)
     }
 
-    func selectBundled(_ pad: BundledPad) {
+    func selectBundled(_ pad: BundledPad, layerVolumeOverrides: [String: Float] = [:]) {
         do {
-            try performanceCore.selectBundled(pad)
+            try performanceCore.selectBundled(pad, layerVolumeOverrides: layerVolumeOverrides)
             selectedInstrument = .bundled(pad)
             allNotesOff()
             lastError = nil
@@ -44,6 +45,10 @@ final class InstrumentRouter: ObservableObject {
         performanceCore.setInstrumentVolume(volume)
     }
 
+    func setLayerVolume(layerPadID: String, volume: Float) {
+        performanceCore.setLayerVolume(layerPadID: layerPadID, volume: volume)
+    }
+
     func setModulation(_ value: Float) {
         modulation = max(0, min(1, value))
         performanceCore.setModulation(modulation)
@@ -54,13 +59,21 @@ final class InstrumentRouter: ObservableObject {
         performanceCore.setPitchBend(pitchBend)
     }
 
+    func setTransposeSemitones(_ semitones: Int) {
+        let clamped = max(-12, min(12, semitones))
+        guard clamped != transposeSemitones else { return }
+        transposeSemitones = clamped
+        performanceCore.setTransposeSemitones(clamped)
+        allNotesOff()
+    }
+
     func setMIDIChannelFilter(_ channel: UInt8) {
         performanceCore.setMIDIChannelFilter(channel)
     }
 
     func playPreviewNote() {
         previewNoteTask?.cancel()
-        let note = Self.previewNote
+        let note = MIDIUtilities.transposedNote(Self.previewNote, by: transposeSemitones)
         previewNoteTask = Task {
             noteOn(note: note, velocity: Self.previewVelocity)
             try? await Task.sleep(for: .seconds(1.25))

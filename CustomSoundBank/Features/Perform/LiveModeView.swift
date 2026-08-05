@@ -30,32 +30,44 @@ struct LiveModeView: View {
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
         .task { userSamples = await appModel.sampleLibrary.allSamples() }
+        .keepScreenAwake()
         .onAppear { OrientationController.lockToLandscape() }
         .onDisappear { OrientationController.unlock() }
     }
 
     private var synthWheelsColumn: some View {
-        HStack(spacing: 10) {
-            SynthWheelControl(
-                title: "Pitch",
-                value: Binding(
-                    get: { (appModel.instrumentRouter.pitchBend + 1) / 2 },
-                    set: { appModel.setPitchBend($0 * 2 - 1) }
-                ),
-                centerSnap: true,
-                prominent: true
-            )
-            .frame(width: wheelWidth)
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                SynthWheelControl(
+                    title: "Pitch",
+                    value: Binding(
+                        get: { (appModel.instrumentRouter.pitchBend + 1) / 2 },
+                        set: { appModel.setPitchBend($0 * 2 - 1) }
+                    ),
+                    centerSnap: true,
+                    prominent: true
+                )
+                .frame(width: wheelWidth)
 
-            SynthWheelControl(
-                title: "Mod",
-                value: Binding(
-                    get: { appModel.instrumentRouter.modulation },
-                    set: { appModel.setModulation($0) }
+                SynthWheelControl(
+                    title: "Mod",
+                    value: Binding(
+                        get: { appModel.instrumentRouter.modulation },
+                        set: { appModel.setModulation($0) }
+                    ),
+                    prominent: true
+                )
+                .frame(width: wheelWidth)
+            }
+
+            TransposeControl(
+                semitones: Binding(
+                    get: { appModel.settings.transposeSemitones },
+                    set: { appModel.updateTransposeSemitones($0) }
                 ),
                 prominent: true
             )
-            .frame(width: wheelWidth)
+            .padding(.horizontal, 4)
         }
     }
 
@@ -80,7 +92,7 @@ struct LiveModeView: View {
 
             Spacer(minLength: 0)
 
-            Text(appModel.instrumentRouter.selectedInstrument.displayName)
+            Text(appModel.activeLiveSet?.name ?? appModel.instrumentRouter.selectedInstrument.displayName)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.accent)
                 .lineLimit(1)
@@ -93,36 +105,52 @@ struct LiveModeView: View {
             favorites: allFavorites,
             gridSpacing: gridSpacing,
             minCellHeight: 44,
-            columnRange: 4...8
+            columnRange: 2...6
         ) { item in
             favoritePadCell(item)
         }
     }
 
     private var voiceVolumeStrip: some View {
-        HStack(spacing: 8) {
-            Text("Vol")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 24, alignment: .leading)
+        Group {
+            if case .bundled(let pad) = appModel.instrumentRouter.selectedInstrument, pad.isLayered {
+                VStack(spacing: 4) {
+                    LayerVolumeControls(
+                        layeredPad: pad,
+                        labelWidth: 44,
+                        valueWidth: 28,
+                        labelFont: .caption.weight(.semibold)
+                    )
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(AppTheme.cardBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            } else {
+                HStack(spacing: 8) {
+                    Text("Vol")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, alignment: .leading)
 
-            Slider(
-                value: Binding(
-                    get: { appModel.selectedInstrumentVolume },
-                    set: { appModel.setSelectedInstrumentVolume($0) }
-                ),
-                in: 0...1
-            )
-            .tint(AppTheme.accent)
+                    Slider(
+                        value: Binding(
+                            get: { appModel.selectedInstrumentVolume },
+                            set: { appModel.setSelectedInstrumentVolume($0) }
+                        ),
+                        in: 0...1
+                    )
+                    .tint(AppTheme.accent)
 
-            Text("\(Int(appModel.selectedInstrumentVolume * 100))")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .frame(width: 28, alignment: .trailing)
+                    Text("\(Int(appModel.selectedInstrumentVolume * 100))")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, alignment: .trailing)
+                }
+                .frame(height: 28)
+                .padding(.horizontal, 10)
+                .background(AppTheme.cardBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
         }
-        .frame(height: 28)
-        .padding(.horizontal, 10)
-        .background(AppTheme.cardBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     @ViewBuilder
@@ -134,6 +162,7 @@ struct LiveModeView: View {
                 color: AppTheme.categoryColor(pad.category),
                 isSelected: appModel.isPadSelected(pad),
                 volume: appModel.padVolume(for: pad),
+                layeredPad: pad.isLayered ? pad : nil,
                 onSelect: { appModel.selectBundledPad(pad) },
                 onVolumeChange: { appModel.setPadVolume($0, for: pad) }
             )

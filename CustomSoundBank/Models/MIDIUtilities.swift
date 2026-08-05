@@ -12,6 +12,10 @@ enum MIDIUtilities {
         Float(Int(midiNote) - Int(rootNote)) * 100
     }
 
+    static func transposedNote(_ note: UInt8, by semitones: Int) -> UInt8 {
+        UInt8(max(0, min(127, Int(note) + semitones)))
+    }
+
     static func clampVelocity(_ velocity: UInt8) -> Float {
         max(0.05, Float(velocity) / 127.0)
     }

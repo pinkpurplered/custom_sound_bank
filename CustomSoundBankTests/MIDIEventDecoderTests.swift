@@ -77,6 +77,13 @@ final class MIDIUtilitiesTests: XCTestCase {
         XCTAssertEqual(MIDIUtilities.transpositionCents(from: 60, to: 59), -100)
     }
 
+    func testTransposedNote() {
+        XCTAssertEqual(MIDIUtilities.transposedNote(60, by: 2), 62)
+        XCTAssertEqual(MIDIUtilities.transposedNote(60, by: -2), 58)
+        XCTAssertEqual(MIDIUtilities.transposedNote(1, by: -5), 0)
+        XCTAssertEqual(MIDIUtilities.transposedNote(126, by: 5), 127)
+    }
+
     func testNoteName() {
         XCTAssertEqual(MIDIUtilities.noteName(for: 60), "C4")
         XCTAssertEqual(MIDIUtilities.noteName(for: 61), "C#4")

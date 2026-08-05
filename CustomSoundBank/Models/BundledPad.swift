@@ -75,6 +75,25 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
 
     var isLayered: Bool { layers != nil }
 
+    /// Short label for per-layer volume sliders (e.g. "Piano", "Strings").
+    var layerVolumeLabel: String {
+        switch category {
+        case .piano: "Piano"
+        case .strings: "Strings"
+        case .organ: "Organ"
+        case .guitar: "Guitar"
+        case .bass: "Bass"
+        case .choir: "Choir"
+        case .brass: "Brass"
+        case .woodwind: "Woodwind"
+        case .synthLead: "Lead"
+        case .synthPad: "Pad"
+        case .musicBox: "Mallet"
+        case .ethnic: "World"
+        case .percussion: "Perc"
+        }
+    }
+
     /// Bundled WAV sample basename (without extension) when this pad uses a classic exported sample.
     var bundledWAVFileName: String? {
         Self.classicWAVFileNames[id]

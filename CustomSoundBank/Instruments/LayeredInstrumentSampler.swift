@@ -6,6 +6,7 @@ import Foundation
 final class LayeredInstrumentSampler {
     private let layerMixer = AVAudioMixerNode()
     private var samplers: [AVAudioUnitSampler] = []
+    private var layerPadIDs: [String] = []
     private var layerVolumes: [Float] = []
     private(set) var loadedPadID: String?
     private var masterVolume: Float = 1
@@ -14,6 +15,12 @@ final class LayeredInstrumentSampler {
 
     func setVolume(_ volume: Float) {
         masterVolume = max(0, min(1, volume))
+        applyLayerVolumes()
+    }
+
+    func setLayerVolume(padID: String, volume: Float) {
+        guard let index = layerPadIDs.firstIndex(of: padID) else { return }
+        layerVolumes[index] = max(0, min(1, volume))
         applyLayerVolumes()
     }
 
@@ -49,6 +56,7 @@ final class LayeredInstrumentSampler {
                 engine.attach(sampler)
                 engine.connect(sampler, to: layerMixer, format: nil)
                 samplers.append(sampler)
+                layerPadIDs.append(pad.id)
                 layerVolumes.append(layerVolume)
             }
             applyLayerVolumes()
@@ -106,6 +114,7 @@ final class LayeredInstrumentSampler {
             }
         }
         samplers = []
+        layerPadIDs = []
         layerVolumes = []
         if engine.attachedNodes.contains(layerMixer) {
             engine.disconnectNodeOutput(layerMixer)

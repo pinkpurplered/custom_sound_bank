@@ -5,6 +5,7 @@ struct PerformView: View {
     @State private var userSamples: [UserSampleInstrument] = []
     @State private var showSettings = false
     @State private var isLiveMode = false
+    @State private var showAddSound = false
 
     private let gridSpacing: CGFloat = 3
     private let horizontalPadding: CGFloat = 6
@@ -13,6 +14,7 @@ struct PerformView: View {
         NavigationStack {
             VStack(spacing: 6) {
                 liveModeButton
+                LiveSetToolbar { showAddSound = true }
                 compactStatusBar
                 performancePanel
                 favoritePadsGrid
@@ -32,9 +34,19 @@ struct PerformView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsSheet().environmentObject(appModel)
             }
+            .sheet(isPresented: $showAddSound) {
+                AddSoundSheet().environmentObject(appModel)
+            }
             .fullScreenCover(isPresented: $isLiveMode) {
                 LiveModeView()
                     .environmentObject(appModel)
+            }
+            .onChange(of: isLiveMode) { _, isLive in
+                if isLive {
+                    IdleTimerController.preventSleep()
+                } else {
+                    IdleTimerController.allowSleep()
+                }
             }
         }
         .task { userSamples = await appModel.sampleLibrary.allSamples() }
@@ -113,27 +125,42 @@ struct PerformView: View {
             }
             .frame(height: 132)
 
-            HStack(spacing: 6) {
-                Text("Voice")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 36, alignment: .leading)
+            Group {
+                if case .bundled(let pad) = appModel.instrumentRouter.selectedInstrument, pad.isLayered {
+                    LayerVolumeControls(layeredPad: pad)
+                } else {
+                    HStack(spacing: 6) {
+                        Text("Voice")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 36, alignment: .leading)
 
-                Slider(
-                    value: Binding(
-                        get: { appModel.selectedInstrumentVolume },
-                        set: { appModel.setSelectedInstrumentVolume($0) }
-                    ),
-                    in: 0...1
-                )
-                .tint(AppTheme.accent)
+                        Slider(
+                            value: Binding(
+                                get: { appModel.selectedInstrumentVolume },
+                                set: { appModel.setSelectedInstrumentVolume($0) }
+                            ),
+                            in: 0...1
+                        )
+                        .tint(AppTheme.accent)
 
-                Text("\(Int(appModel.selectedInstrumentVolume * 100))")
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, alignment: .trailing)
+                        Text("\(Int(appModel.selectedInstrumentVolume * 100))")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24, alignment: .trailing)
+                    }
+                    .frame(height: 24)
+                }
             }
-            .frame(height: 24)
+
+            TransposeControl(
+                semitones: Binding(
+                    get: { appModel.settings.transposeSemitones },
+                    set: { appModel.updateTransposeSemitones($0) }
+                )
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: 28)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -141,7 +168,11 @@ struct PerformView: View {
     }
 
     private var favoritePadsGrid: some View {
-        PerformPadsGrid(favorites: allFavorites, gridSpacing: gridSpacing) { item in
+        PerformPadsGrid(
+            favorites: allFavorites,
+            gridSpacing: gridSpacing,
+            emptyMessage: "Tap Add Sound to build this live set."
+        ) { item in
             favoritePadCell(item)
         }
     }
@@ -155,6 +186,7 @@ struct PerformView: View {
                 color: AppTheme.categoryColor(pad.category),
                 isSelected: appModel.isPadSelected(pad),
                 volume: appModel.padVolume(for: pad),
+                layeredPad: pad.isLayered ? pad : nil,
                 onSelect: { appModel.selectBundledPad(pad) },
                 onVolumeChange: { appModel.setPadVolume($0, for: pad) }
             )
@@ -206,6 +238,13 @@ private struct SettingsSheet: View {
                 }
 
                 Section("MIDI") {
+                    TransposeControl(
+                        semitones: Binding(
+                            get: { appModel.settings.transposeSemitones },
+                            set: { appModel.updateTransposeSemitones($0) }
+                        )
+                    )
+
                     if appModel.midiService.sources.isEmpty {
                         Text("No MIDI sources detected").foregroundStyle(.secondary)
                     } else {
