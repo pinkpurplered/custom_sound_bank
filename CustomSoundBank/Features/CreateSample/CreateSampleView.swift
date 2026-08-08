@@ -27,6 +27,9 @@ struct CreateSampleView: View {
             }
             .onDisappear {
                 recorder.stopPreview()
+                if recorder.state != .recording, !isCountingDown {
+                    appModel.resumePerformanceAudio()
+                }
             }
             .alert("Recording", isPresented: Binding(
                 get: { alertMessage != nil },
@@ -179,7 +182,7 @@ struct CreateSampleView: View {
             try recorder.playTrimmedPreview()
         } catch {
             alertMessage = error.localizedDescription
-            appModel.resumePerformanceAudio()
+            recorder.restoreRecordingSessionIfNeeded()
         }
     }
 

@@ -54,7 +54,7 @@ Bundled instruments use SF2 soundfonts in `CustomSoundBank/Resources/SoundBanks/
 | File | Used for |
 | --- | --- |
 | `GeneralUser-GS.sf2` | Default bank for most GM programs |
-| `YDP-GrandPiano.sf2` | Grand Piano |
+| `DoreMark-Fazioli-F308.sf2` | Grand Piano (Fazioli F308, SF-tailored) |
 | `FreePats-DrawbarOrgan.sf2` | Hammond Drawbar |
 | `FreePats-PercussiveOrgan.sf2` | Hammond Percussive |
 | `FreePats-RockOrgan.sf2` | Hammond Rock |
@@ -95,7 +95,7 @@ CustomSoundBank/
 │   ├── SampleVoicePool.swift
 │   └── BundledPadSampleRenderer.swift   # offline SF2→WAV (not wired to UI)
 ├── Models/
-│   ├── BundledPad.swift          # 115-pad catalog + PadCategory
+│   ├── BundledPad.swift          # 117-pad catalog + PadCategory
 │   ├── InstrumentKind.swift      # SelectedInstrument, UserSampleInstrument
 │   ├── AppSettings.swift
 │   └── MIDIUtilities.swift
@@ -203,10 +203,10 @@ Legacy favorite IDs (`piano`, `strings`, etc.) are migrated to current pad IDs o
 
 | Metric | Value |
 | --- | --- |
-| Total pads | 115 |
+| Total pads | 117 |
 | Categories | 13 — Piano & Keys, Mallets & Bells, Organ, Guitar, Bass, Strings, Choir & Voice, Brass, Woodwind, Synth Lead, Synth Pad, World, Percussion |
 | Layered pads | 1 — `piano_strings_layer` (Grand Piano + String Ensemble) |
-| Default Live favorites | 7 — grand piano, piano+strings, strings, church organ, music box, saw lead, warm pad |
+| Default Live favorites | 7 — Yamaha Grand Lite, piano+strings, strings, church organ, music box, saw lead, warm pad |
 
 Catalog is defined in `BundledPad.catalog`. Each pad maps to a GM program and optionally a specific soundfont file.
 

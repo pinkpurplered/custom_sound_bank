@@ -2,6 +2,14 @@ import AVFoundation
 import Foundation
 
 final class SampleVoicePool {
+    /// Matches `SampleLibraryStore` output: mono float32 @ 44.1 kHz.
+    private static let sampleFormat = AVAudioFormat(
+        commonFormat: .pcmFormatFloat32,
+        sampleRate: 44_100,
+        channels: 1,
+        interleaved: false
+    )!
+
     private struct ActiveVoice {
         let note: UInt8
         let player: AVAudioPlayerNode
@@ -40,14 +48,29 @@ final class SampleVoicePool {
         }
         try file.read(into: sourceBuffer)
 
-        let floatBuffer = try makeFloatBuffer(from: sourceBuffer, format: sourceFormat)
+        let floatBuffer = try makeFloatBuffer(from: sourceBuffer, format: sourceFormat, to: Self.sampleFormat)
 
-        let startFrame = AVAudioFramePosition(sample.trimStartSeconds * sourceFormat.sampleRate)
-        let endFrame = sample.trimEndSeconds.map { AVAudioFramePosition($0 * sourceFormat.sampleRate) }
-            ?? AVAudioFramePosition(floatBuffer.frameLength)
-        let trimmedLength = AVAudioFrameCount(max(1, endFrame - startFrame))
+        let totalFrames = Int(floatBuffer.frameLength)
+        guard totalFrames > 0 else {
+            throw NSError(domain: "SampleVoicePool", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "Recorded sample is empty."
+            ])
+        }
+
+        let sampleRate = floatBuffer.format.sampleRate
+        let startFrame = min(
+            max(0, Int(sample.trimStartSeconds * sampleRate)),
+            totalFrames - 1
+        )
+        let endFrame: Int
+        if let trimEndSeconds = sample.trimEndSeconds {
+            endFrame = min(max(startFrame + 1, Int(trimEndSeconds * sampleRate)), totalFrames)
+        } else {
+            endFrame = totalFrames
+        }
+        let trimmedLength = AVAudioFrameCount(endFrame - startFrame)
         guard let trimmed = AVAudioPCMBuffer(pcmFormat: floatBuffer.format, frameCapacity: trimmedLength) else {
-            throw NSError(domain: "SampleVoicePool", code: 2)
+            throw NSError(domain: "SampleVoicePool", code: 3)
         }
         trimmed.frameLength = trimmedLength
 
@@ -55,13 +78,15 @@ final class SampleVoicePool {
             let src = floatBuffer.floatChannelData,
             let dst = trimmed.floatChannelData
         else {
-            throw NSError(domain: "SampleVoicePool", code: 3)
+            throw NSError(domain: "SampleVoicePool", code: 4)
         }
 
         for channel in 0..<Int(floatBuffer.format.channelCount) {
-            let source = src[channel].advanced(by: Int(startFrame))
+            let source = src[channel].advanced(by: startFrame)
             dst[channel].update(from: source, count: Int(trimmedLength))
         }
+
+        AudioBufferGain.peakNormalize(trimmed)
 
         sampleBuffer = trimmed
         rootNote = sample.rootNote
@@ -121,29 +146,28 @@ final class SampleVoicePool {
         }
     }
 
-    private func makeFloatBuffer(from sourceBuffer: AVAudioPCMBuffer, format: AVAudioFormat) throws -> AVAudioPCMBuffer {
-        if format.commonFormat == .pcmFormatFloat32, format.isInterleaved == false {
+    private func makeFloatBuffer(
+        from sourceBuffer: AVAudioPCMBuffer,
+        format sourceFormat: AVAudioFormat,
+        to destinationFormat: AVAudioFormat
+    ) throws -> AVAudioPCMBuffer {
+        if sourceFormat.commonFormat == destinationFormat.commonFormat,
+           sourceFormat.isInterleaved == destinationFormat.isInterleaved,
+           sourceFormat.channelCount == destinationFormat.channelCount,
+           sourceFormat.sampleRate == destinationFormat.sampleRate {
             return sourceBuffer
         }
 
-        guard let floatFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: format.sampleRate,
-            channels: format.channelCount,
-            interleaved: false
-        ) else {
-            throw NSError(domain: "SampleVoicePool", code: 4)
+        guard let converter = AVAudioConverter(from: sourceFormat, to: destinationFormat) else {
+            throw NSError(domain: "SampleVoicePool", code: 6)
         }
-
-        guard let converter = AVAudioConverter(from: format, to: floatFormat) else {
-            throw NSError(domain: "SampleVoicePool", code: 5)
-        }
+        AudioConverterQuality.configure(converter)
 
         let capacity = AVAudioFrameCount(
-            Double(sourceBuffer.frameLength) * floatFormat.sampleRate / format.sampleRate + 1
+            Double(sourceBuffer.frameLength) * destinationFormat.sampleRate / sourceFormat.sampleRate + 1
         )
-        guard let destination = AVAudioPCMBuffer(pcmFormat: floatFormat, frameCapacity: capacity) else {
-            throw NSError(domain: "SampleVoicePool", code: 6)
+        guard let destination = AVAudioPCMBuffer(pcmFormat: destinationFormat, frameCapacity: capacity) else {
+            throw NSError(domain: "SampleVoicePool", code: 7)
         }
 
         var consumedInput = false
@@ -159,7 +183,7 @@ final class SampleVoicePool {
         }
 
         if status == .error {
-            throw error ?? NSError(domain: "SampleVoicePool", code: 7)
+            throw error ?? NSError(domain: "SampleVoicePool", code: 8)
         }
 
         return destination
@@ -199,28 +223,23 @@ final class SampleVoicePool {
     }
 
     private func buildPool() {
+        let format = Self.sampleFormat
         for _ in 0..<maxVoices {
             let player = AVAudioPlayerNode()
             let varispeed = AVAudioUnitVarispeed()
             engine.attach(player)
             engine.attach(varispeed)
-            engine.connect(player, to: varispeed, format: nil)
-            engine.connect(varispeed, to: mixer, format: nil)
-            prime(player)
+            engine.connect(player, to: varispeed, format: format)
+            engine.connect(varispeed, to: mixer, format: format)
+            prime(player, format: format)
             pool.append((player, varispeed))
         }
     }
 
-    private func prime(_ player: AVAudioPlayerNode) {
-        guard
-            let format = mixer.outputFormat(forBus: 0).channelCount > 0
-                ? mixer.outputFormat(forBus: 0)
-                : AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 2),
-            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 256)
-        else { return }
+    private func prime(_ player: AVAudioPlayerNode, format: AVAudioFormat) {
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 256) else { return }
         buffer.frameLength = 256
         player.scheduleBuffer(buffer, at: nil, options: [])
-        player.play()
     }
 
     private func returnVoice(player: AVAudioPlayerNode, varispeed: AVAudioUnitVarispeed) {

@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 
 struct SampleLibraryManifest: Codable, Equatable {
@@ -13,11 +14,13 @@ actor SampleLibraryStore {
     enum StoreError: LocalizedError {
         case sampleNotFound
         case invalidManifest
+        case emptyRecording
 
         var errorDescription: String? {
             switch self {
             case .sampleNotFound: return "Sample not found."
             case .invalidManifest: return "Sample library manifest is invalid."
+            case .emptyRecording: return "Recording is too short to save."
             }
         }
     }
@@ -61,15 +64,15 @@ actor SampleLibraryStore {
         if fileManager.fileExists(atPath: destination.path) {
             try fileManager.removeItem(at: destination)
         }
-        try fileManager.copyItem(at: sourceURL, to: destination)
+        try writeTrimmedCAF(from: sourceURL, to: destination, trimStart: trimStart, trimEnd: trimEnd)
 
         let sample = UserSampleInstrument(
             id: id,
             name: name,
             fileName: fileName,
             rootNote: rootNote,
-            trimStartSeconds: trimStart,
-            trimEndSeconds: trimEnd
+            trimStartSeconds: 0,
+            trimEndSeconds: nil
         )
         manifest.samples.append(sample)
         try persist()
@@ -99,6 +102,122 @@ actor SampleLibraryStore {
     private func persist() throws {
         let data = try JSONEncoder().encode(manifest)
         try data.write(to: manifestURL, options: .atomic)
+    }
+
+    private func writeTrimmedCAF(
+        from sourceURL: URL,
+        to destination: URL,
+        trimStart: Double,
+        trimEnd: Double?
+    ) throws {
+        let inputFile = try AVAudioFile(forReading: sourceURL)
+        let inputFormat = inputFile.processingFormat
+        let frameCount = AVAudioFrameCount(inputFile.length)
+        guard frameCount > 0 else {
+            throw StoreError.emptyRecording
+        }
+
+        guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: frameCount) else {
+            throw StoreError.invalidManifest
+        }
+        try inputFile.read(into: inputBuffer)
+
+        guard let outputFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 44_100,
+            channels: 1,
+            interleaved: false
+        ) else {
+            throw StoreError.invalidManifest
+        }
+
+        let floatBuffer = try convertToFloatBuffer(inputBuffer, from: inputFormat, to: outputFormat)
+        let totalFrames = Int(floatBuffer.frameLength)
+        guard totalFrames > 0 else {
+            throw StoreError.emptyRecording
+        }
+
+        let sampleRate = outputFormat.sampleRate
+        let startFrame = min(max(0, Int(trimStart * sampleRate)), totalFrames - 1)
+        let endFrame: Int
+        if let trimEnd {
+            endFrame = min(max(startFrame + 1, Int(trimEnd * sampleRate)), totalFrames)
+        } else {
+            endFrame = totalFrames
+        }
+        let trimmedLength = AVAudioFrameCount(endFrame - startFrame)
+        guard trimmedLength > 0 else {
+            throw StoreError.emptyRecording
+        }
+
+        guard let trimmed = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: trimmedLength) else {
+            throw StoreError.invalidManifest
+        }
+        trimmed.frameLength = trimmedLength
+
+        guard
+            let src = floatBuffer.floatChannelData,
+            let dst = trimmed.floatChannelData
+        else {
+            throw StoreError.invalidManifest
+        }
+
+        for channel in 0..<Int(outputFormat.channelCount) {
+            dst[channel].update(from: src[channel].advanced(by: startFrame), count: Int(trimmedLength))
+        }
+
+        AudioBufferGain.peakNormalize(trimmed)
+
+        let outputFile = try AVAudioFile(
+            forWriting: destination,
+            settings: outputFormat.settings,
+            commonFormat: .pcmFormatFloat32,
+            interleaved: false
+        )
+        try outputFile.write(from: trimmed)
+    }
+
+    private func convertToFloatBuffer(
+        _ sourceBuffer: AVAudioPCMBuffer,
+        from sourceFormat: AVAudioFormat,
+        to destinationFormat: AVAudioFormat
+    ) throws -> AVAudioPCMBuffer {
+        if sourceFormat.commonFormat == destinationFormat.commonFormat,
+           sourceFormat.isInterleaved == destinationFormat.isInterleaved,
+           sourceFormat.channelCount == destinationFormat.channelCount,
+           sourceFormat.sampleRate == destinationFormat.sampleRate {
+            return sourceBuffer
+        }
+
+        guard let converter = AVAudioConverter(from: sourceFormat, to: destinationFormat) else {
+            throw StoreError.invalidManifest
+        }
+        AudioConverterQuality.configure(converter)
+
+        let capacity = AVAudioFrameCount(
+            Double(sourceBuffer.frameLength) * destinationFormat.sampleRate / sourceFormat.sampleRate + 1
+        )
+        guard let destination = AVAudioPCMBuffer(pcmFormat: destinationFormat, frameCapacity: capacity) else {
+            throw StoreError.invalidManifest
+        }
+
+        var consumedInput = false
+        var error: NSError?
+        let status = converter.convert(to: destination, error: &error) { _, outStatus in
+            if consumedInput {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+            consumedInput = true
+            outStatus.pointee = .haveData
+            return sourceBuffer
+        }
+
+        if status == .error {
+            throw error ?? StoreError.invalidManifest
+        }
+
+        return destination
     }
 
     private static func loadManifest(from url: URL) throws -> SampleLibraryManifest {

@@ -15,19 +15,21 @@ final class AudioEngineController: ObservableObject {
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
     private weak var connectedInstrumentRoot: AVAudioNode?
+    private var configuredSampleRate: Double = 0
 
     init() {
         engine.attach(mainMixer)
-        engine.connect(mainMixer, to: engine.outputNode, format: nil)
     }
 
     func start() throws {
         try configurePerformanceSession()
 
-        guard !engine.isRunning else {
+        if engine.isRunning {
             refreshRouteSnapshot()
             return
         }
+
+        applyGraphConnections()
         engine.prepare()
         try engine.start()
         refreshRouteSnapshot()
@@ -36,9 +38,29 @@ final class AudioEngineController: ObservableObject {
     func configurePerformanceSession() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playback, mode: .default, options: [])
-        try session.setPreferredSampleRate(44_100)
-        try session.setPreferredIOBufferDuration(0.0029)
+        try session.setPreferredSampleRate(AudioSessionConfiguration.preferredSampleRate(for: session))
+        try session.setPreferredIOBufferDuration(
+            AudioSessionConfiguration.preferredIOBufferDuration(for: session)
+        )
         try session.setActive(true)
+        configuredSampleRate = session.sampleRate
+    }
+
+    /// Re-applies session settings and rebuilds the output connection when the audio route changes.
+    func reconfigureForCurrentRoute() throws {
+        let wasRunning = engine.isRunning
+        if wasRunning {
+            engine.stop()
+        }
+
+        try configurePerformanceSession()
+        try alignGraphToHardware()
+
+        engine.prepare()
+        if wasRunning {
+            try engine.start()
+        }
+        refreshRouteSnapshot()
     }
 
     func stop() {
@@ -49,10 +71,12 @@ final class AudioEngineController: ObservableObject {
         mainMixer.outputVolume = max(0, min(1, volume))
     }
 
-    func attach(node: AVAudioNode) {
-        if !engine.attachedNodes.contains(node) {
-            engine.attach(node)
-            engine.connect(node, to: mainMixer, format: nil)
+    func attach(node: AVAudioNode) throws {
+        try mutateGraph {
+            if !engine.attachedNodes.contains(node) {
+                engine.attach(node)
+                engine.connect(node, to: mainMixer, format: workingFormat)
+            }
         }
     }
 
@@ -67,6 +91,7 @@ final class AudioEngineController: ObservableObject {
         let wasRunning = engine.isRunning
         if wasRunning { engine.stop() }
         try mutation()
+        applyGraphConnections()
         engine.prepare()
         if wasRunning { try engine.start() }
     }
@@ -85,7 +110,7 @@ final class AudioEngineController: ObservableObject {
 
             let outputs = engine.outputConnectionPoints(for: node, outputBus: 0)
             if !outputs.contains(where: { $0.node === mainMixer }) {
-                engine.connect(node, to: mainMixer, format: nil)
+                engine.connect(node, to: mainMixer, format: workingFormat)
             }
 
             connectedInstrumentRoot = node
@@ -134,6 +159,41 @@ final class AudioEngineController: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 self?.routeSnapshot = snapshot
             }
+        }
+    }
+
+    private var workingFormat: AVAudioFormat {
+        let hardware = engine.outputNode.outputFormat(forBus: 0)
+        if hardware.sampleRate > 0, hardware.channelCount > 0 {
+            return AVAudioFormat(
+                standardFormatWithSampleRate: hardware.sampleRate,
+                channels: min(2, hardware.channelCount)
+            ) ?? fallbackFormat
+        }
+        let rate = configuredSampleRate > 0
+            ? configuredSampleRate
+            : AudioSessionConfiguration.preferredSampleRate()
+        return AVAudioFormat(standardFormatWithSampleRate: rate, channels: 2) ?? fallbackFormat
+    }
+
+    private var fallbackFormat: AVAudioFormat {
+        AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2)!
+    }
+
+    private func alignGraphToHardware() throws {
+        applyGraphConnections()
+    }
+
+    private func applyGraphConnections() {
+        if engine.attachedNodes.contains(mainMixer) {
+            engine.disconnectNodeOutput(mainMixer)
+        }
+        engine.connect(mainMixer, to: engine.outputNode, format: workingFormat)
+
+        if let connectedInstrumentRoot,
+           engine.attachedNodes.contains(connectedInstrumentRoot) {
+            engine.disconnectNodeOutput(connectedInstrumentRoot)
+            engine.connect(connectedInstrumentRoot, to: mainMixer, format: workingFormat)
         }
     }
 }

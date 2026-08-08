@@ -1,8 +1,13 @@
+import AVFoundation
 import Combine
 import Foundation
 
 @MainActor
 final class AppModel: ObservableObject, AudioSessionCoordinator {
+    #if DEBUG
+    static weak var current: AppModel?
+    #endif
+
     @Published var settings = AppSettings.default {
         didSet {
             if !isApplyingLiveSet {
@@ -19,6 +24,8 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
     private var performanceAudioSuspended = false
     private var cancellables = Set<AnyCancellable>()
     private var isApplyingLiveSet = false
+
+    var isPerformanceAudioSuspended: Bool { performanceAudioSuspended }
     private var suppressLiveSetDirty = false
 
     private static let favoritesKey = "favoriteBundledPadIDs"
@@ -32,7 +39,7 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
 
     /// Maps pre-catalog InstrumentKind ids saved in UserDefaults to current BundledPad ids.
     private static let legacyFavoritePadIDs: [String: String] = [
-        "piano": "piano_grand",
+        "piano": "piano_fazioli_f308",
         "strings": "strings_ensemble",
         "organ": "organ_church",
         "musicBox": "musicbox_classic",
@@ -51,6 +58,9 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
     }
 
     init() {
+        #if DEBUG
+        Self.current = self
+        #endif
         loadLiveSets()
         instrumentRouter.setTransposeSemitones(settings.transposeSemitones)
 
@@ -81,7 +91,7 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
             },
             onRouteChange: { [weak self] in
                 Task { @MainActor in
-                    self?.audioEngine.refreshRouteSnapshot()
+                    self?.handleAudioRouteChange()
                 }
             }
         )
@@ -108,10 +118,35 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
     func recoverAudio() {
         guard !performanceAudioSuspended else { return }
         do {
-            try audioEngine.start()
+            try audioEngine.reconfigureForCurrentRoute()
             instrumentRouter.allNotesOff()
+            Task { await reloadCurrentInstrumentAfterRouteChange() }
         } catch {
             startupError = error.localizedDescription
+        }
+    }
+
+    func handleAudioRouteChange() {
+        guard !performanceAudioSuspended else {
+            audioEngine.refreshRouteSnapshot()
+            return
+        }
+        do {
+            try audioEngine.reconfigureForCurrentRoute()
+            instrumentRouter.allNotesOff()
+            Task { await reloadCurrentInstrumentAfterRouteChange() }
+        } catch {
+            startupError = error.localizedDescription
+            audioEngine.refreshRouteSnapshot()
+        }
+    }
+
+    private func reloadCurrentInstrumentAfterRouteChange() async {
+        switch instrumentRouter.selectedInstrument {
+        case .bundled(let pad):
+            selectBundledPad(pad)
+        case .user(let sample):
+            await selectUserInstrument(sample)
         }
     }
 
@@ -119,14 +154,14 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
         performanceAudioSuspended = true
         instrumentRouter.allNotesOff()
         audioEngine.stop()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     func resumePerformanceAudio() {
         performanceAudioSuspended = false
         do {
-            try audioEngine.configurePerformanceSession()
             try audioEngine.start()
-            audioEngine.refreshRouteSnapshot()
+            Task { await reloadCurrentInstrumentAfterRouteChange() }
         } catch {
             startupError = error.localizedDescription
         }
@@ -244,6 +279,14 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
 
     func previewUserInstrument(_ sample: UserSampleInstrument) async {
         await selectUserInstrument(sample)
+        if !audioEngine.engine.isRunning {
+            do {
+                try audioEngine.start()
+            } catch {
+                startupError = error.localizedDescription
+                return
+            }
+        }
         try? await Task.sleep(for: .milliseconds(80))
         instrumentRouter.playPreviewNote()
     }
@@ -503,6 +546,11 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
                 NSLocalizedDescriptionKey: "No recording available."
             ])
         }
+        guard recorder.duration >= 0.05 else {
+            throw NSError(domain: "AppModel", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "Recording is too short to save."
+            ])
+        }
         let sample = try await sampleLibrary.importRecording(
             from: sourceURL,
             name: name,
@@ -510,8 +558,11 @@ final class AppModel: ObservableObject, AudioSessionCoordinator {
             trimStart: recorder.trimStart,
             trimEnd: recorder.trimEnd > recorder.trimStart ? recorder.trimEnd : nil
         )
-        await selectUserInstrument(sample)
+        let url = await sampleLibrary.fileURL(for: sample)
+        try await instrumentRouter.selectUserSample(sample, fileURL: url)
+        instrumentRouter.setInstrumentVolume(sampleVolume(for: sample))
         resumePerformanceAudio()
+        markLiveSetDirty()
         return sample
     }
 

@@ -56,6 +56,8 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
     let soundFontFileName: String?
     /// When set, this pad layers multiple instruments instead of using gmProgram/soundFontFileName.
     let layers: [LayerSpec]?
+    let effects: InstrumentEffectPreset?
+    let articulation: ArticulationSettings?
 
     init(
         id: String,
@@ -63,7 +65,9 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
         category: PadCategory,
         gmProgram: UInt8,
         soundFontFileName: String? = nil,
-        layers: [LayerSpec]? = nil
+        layers: [LayerSpec]? = nil,
+        effects: InstrumentEffectPreset? = nil,
+        articulation: ArticulationSettings? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -71,6 +75,8 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
         self.gmProgram = gmProgram
         self.soundFontFileName = soundFontFileName
         self.layers = layers
+        self.effects = effects
+        self.articulation = articulation
     }
 
     var isLayered: Bool { layers != nil }
@@ -109,7 +115,7 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
 
     static let catalog: [BundledPad] = [
         // Piano & Keys (GM 0–7)
-        BundledPad(id: "piano_grand", displayName: "Grand Piano", category: .piano, gmProgram: 0, soundFontFileName: "YDP-GrandPiano"),
+        BundledPad(id: "piano_fazioli_f308", displayName: "Grand Piano", category: .piano, gmProgram: 0, soundFontFileName: "DoreMark-Fazioli-F308"),
         BundledPad(id: "piano_bright", displayName: "Bright Piano", category: .piano, gmProgram: 1, soundFontFileName: nil),
         BundledPad(id: "piano_electric_grand", displayName: "Electric Grand", category: .piano, gmProgram: 2, soundFontFileName: nil),
         BundledPad(id: "piano_honky", displayName: "Honky-tonk", category: .piano, gmProgram: 3, soundFontFileName: nil),
@@ -123,8 +129,8 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
             category: .piano,
             gmProgram: 0,
             layers: [
-                LayerSpec(padID: "piano_grand", volume: 1.0),
-                LayerSpec(padID: "strings_ensemble", volume: 0.65),
+                LayerSpec(padID: "piano_fazioli_f308", volume: 1.0),
+                LayerSpec(padID: "strings_ensemble", volume: 0.52),
             ]
         ),
 
@@ -142,6 +148,18 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
         BundledPad(id: "organ_drawbar", displayName: "Drawbar Organ", category: .organ, gmProgram: 16, soundFontFileName: nil),
         BundledPad(id: "organ_percussive", displayName: "Percussive Organ", category: .organ, gmProgram: 17, soundFontFileName: nil),
         BundledPad(id: "organ_rock", displayName: "Rock Organ", category: .organ, gmProgram: 18, soundFontFileName: nil),
+        BundledPad(
+            id: "organ_muted_rock",
+            displayName: "Muted Rock Organ",
+            category: .organ,
+            gmProgram: 0,
+            soundFontFileName: "FreePats-RockOrgan",
+            effects: .mutedRockOrgan,
+            articulation: ArticulationSettings(
+                maximumNoteDuration: nil,
+                ignoresSustainPedal: true
+            )
+        ),
         BundledPad(id: "organ_church", displayName: "Church Organ", category: .organ, gmProgram: 19, soundFontFileName: nil),
         BundledPad(id: "organ_reed", displayName: "Reed Organ", category: .organ, gmProgram: 20, soundFontFileName: nil),
         BundledPad(id: "organ_accordion", displayName: "Accordion", category: .organ, gmProgram: 21, soundFontFileName: nil),
@@ -265,7 +283,7 @@ struct BundledPad: Identifiable, Equatable, Sendable, Hashable {
 
     /// Default Live favorites: the six classic bundled WAV instruments.
     static let defaultFavoritePadIDs: [String] = [
-        "piano_grand",
+        "piano_fazioli_f308",
         "piano_strings_layer",
         "strings_ensemble",
         "organ_church",

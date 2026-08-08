@@ -14,7 +14,7 @@ struct CustomSoundBankApp: App {
         .onChange(of: scenePhase) { _, phase in
             if phase != .active {
                 appModel.instrumentRouter.allNotesOff()
-            } else {
+            } else if !appModel.isPerformanceAudioSuspended {
                 appModel.recoverAudio()
             }
         }

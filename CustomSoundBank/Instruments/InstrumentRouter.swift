@@ -93,7 +93,7 @@ final class InstrumentRouter: ObservableObject {
             activeNotes.insert(note)
             sustainedNotes.remove(note)
         case .noteOff(let note, _):
-            if sustainDown {
+            if sustainDown && !ignoresSustainPedal() {
                 sustainedNotes.insert(note)
                 return
             }
@@ -123,7 +123,7 @@ final class InstrumentRouter: ObservableObject {
     }
 
     func noteOff(note: UInt8) {
-        if sustainDown {
+        if sustainDown && !ignoresSustainPedal() {
             sustainedNotes.insert(note)
             return
         }
@@ -132,6 +132,7 @@ final class InstrumentRouter: ObservableObject {
     }
 
     func setSustain(_ isDown: Bool) {
+        if ignoresSustainPedal() { return }
         sustainDown = isDown
         if !isDown {
             let notes = sustainedNotes
@@ -145,5 +146,14 @@ final class InstrumentRouter: ObservableObject {
         sustainedNotes.removeAll()
         sustainDown = false
         performanceCore.allNotesOff()
+    }
+
+    private func ignoresSustainPedal() -> Bool {
+        switch selectedInstrument {
+        case .bundled(let pad):
+            return pad.articulation?.ignoresSustainPedal ?? false
+        case .user:
+            return false
+        }
     }
 }

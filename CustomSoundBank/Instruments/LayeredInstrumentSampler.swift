@@ -8,13 +8,14 @@ final class LayeredInstrumentSampler {
     private var samplers: [AVAudioUnitSampler] = []
     private var layerPadIDs: [String] = []
     private var layerVolumes: [Float] = []
+    private var layerCatalogGains: [Float] = []
     private(set) var loadedPadID: String?
-    private var masterVolume: Float = 1
+    private var userVolume: Float = 1
 
     var node: AVAudioNode { layerMixer }
 
     func setVolume(_ volume: Float) {
-        masterVolume = max(0, min(1, volume))
+        userVolume = max(0, min(1, volume))
         applyLayerVolumes()
     }
 
@@ -58,6 +59,7 @@ final class LayeredInstrumentSampler {
                 samplers.append(sampler)
                 layerPadIDs.append(pad.id)
                 layerVolumes.append(layerVolume)
+                layerCatalogGains.append(PlaybackGain.forPad(pad))
             }
             applyLayerVolumes()
         }
@@ -116,6 +118,7 @@ final class LayeredInstrumentSampler {
         samplers = []
         layerPadIDs = []
         layerVolumes = []
+        layerCatalogGains = []
         if engine.attachedNodes.contains(layerMixer) {
             engine.disconnectNodeOutput(layerMixer)
             engine.detach(layerMixer)
@@ -124,8 +127,9 @@ final class LayeredInstrumentSampler {
 
     private func applyLayerVolumes() {
         for (index, sampler) in samplers.enumerated() {
-            let layerVolume = layerVolumes[index]
-            sampler.volume = layerVolume * masterVolume
+            let effective = layerCatalogGains[index] * layerVolumes[index] * userVolume
+            sampler.volume = min(1, effective)
         }
+        layerMixer.outputVolume = 1
     }
 }

@@ -5,8 +5,10 @@ import Foundation
 final class InstrumentPerformanceCore: @unchecked Sendable {
     private let lock = NSLock()
     private let bundledSampler = BundledInstrumentSampler()
+    private let effectSampler = EffectInstrumentSampler()
     private let layeredSampler = LayeredInstrumentSampler()
     private var usingLayeredSampler = false
+    private var usingEffectSampler = false
     private var userVoicePool: SampleVoicePool?
     private var userMixer = AVAudioMixerNode()
     private weak var audioEngine: AudioEngineController?
@@ -41,6 +43,8 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         }
         allNotesOffLocked()
         if let layerSpecs = pad.layers {
+            effectSampler.tearDown(from: audioEngine)
+            usingEffectSampler = false
             let resolvedLayers = layerSpecs.compactMap { spec -> (BundledPad, Float)? in
                 guard let layerPad = BundledPad.pad(withID: spec.padID) else { return nil }
                 let volume = layerVolumeOverrides[spec.padID] ?? spec.volume
@@ -54,8 +58,17 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
             try layeredSampler.load(padID: pad.id, layers: resolvedLayers, into: audioEngine)
             try audioEngine.connectInstrument(layeredSampler.node)
             usingLayeredSampler = true
-        } else {
+        } else if pad.effects != nil {
             layeredSampler.tearDown(from: audioEngine)
+            bundledSampler.tearDown(from: audioEngine)
+            usingLayeredSampler = false
+            try effectSampler.load(pad: pad, into: audioEngine)
+            try audioEngine.connectInstrument(effectSampler.node)
+            usingEffectSampler = true
+        } else {
+            effectSampler.tearDown(from: audioEngine)
+            layeredSampler.tearDown(from: audioEngine)
+            usingEffectSampler = false
             try bundledSampler.load(pad: pad, into: audioEngine)
             try audioEngine.connectInstrument(bundledSampler.node)
             usingLayeredSampler = false
@@ -74,11 +87,21 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
             ])
         }
         if userVoicePool == nil {
-            audioEngine.attach(node: userMixer)
-            userVoicePool = SampleVoicePool(engine: audioEngine.engine, mixer: userMixer)
+            try audioEngine.mutateGraph {
+                let engine = audioEngine.engine
+                if !engine.attachedNodes.contains(userMixer) {
+                    engine.attach(userMixer)
+                }
+                if userVoicePool == nil {
+                    userVoicePool = SampleVoicePool(engine: engine, mixer: userMixer)
+                }
+            }
         }
+        bundledSampler.tearDown(from: audioEngine)
         layeredSampler.tearDown(from: audioEngine)
+        effectSampler.tearDown(from: audioEngine)
         usingLayeredSampler = false
+        usingEffectSampler = false
         try userVoicePool?.load(sample: sample, from: fileURL)
         try audioEngine.connectInstrument(userMixer)
         selectedInstrument = .user(sample)
@@ -178,6 +201,8 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         case .bundled:
             if usingLayeredSampler {
                 layeredSampler.noteOn(note: transposedNote, velocity: velocity)
+            } else if usingEffectSampler {
+                effectSampler.noteOn(note: transposedNote, velocity: velocity)
             } else {
                 bundledSampler.noteOn(note: transposedNote, velocity: velocity)
             }
@@ -187,7 +212,7 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
     }
 
     private func noteOffLocked(note: UInt8) {
-        if sustainDown {
+        if sustainDown && !selectedPadIgnoresSustain() {
             sustainedNotes.insert(note)
             return
         }
@@ -196,6 +221,8 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         case .bundled:
             if usingLayeredSampler {
                 layeredSampler.noteOff(note: transposedNote)
+            } else if usingEffectSampler {
+                effectSampler.noteOff(note: transposedNote)
             } else {
                 bundledSampler.noteOff(note: transposedNote)
             }
@@ -209,6 +236,7 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
     }
 
     private func setSustainLocked(_ isDown: Bool) {
+        if selectedPadIgnoresSustain() { return }
         sustainDown = isDown
         if !isDown {
             let notes = sustainedNotes
@@ -221,6 +249,7 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         sustainedNotes.removeAll()
         sustainDown = false
         bundledSampler.allNotesOff()
+        effectSampler.allNotesOff()
         layeredSampler.allNotesOff()
         userVoicePool?.allNotesOff()
     }
@@ -230,6 +259,8 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         case .bundled:
             if usingLayeredSampler {
                 layeredSampler.setVolume(instrumentVolume)
+            } else if usingEffectSampler {
+                effectSampler.setVolume(instrumentVolume)
             } else {
                 bundledSampler.setVolume(instrumentVolume)
             }
@@ -248,6 +279,8 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         case .bundled:
             if usingLayeredSampler {
                 layeredSampler.setModulation(modulation)
+            } else if usingEffectSampler {
+                effectSampler.setModulation(modulation)
             } else {
                 bundledSampler.setModulation(modulation)
             }
@@ -261,11 +294,22 @@ final class InstrumentPerformanceCore: @unchecked Sendable {
         case .bundled:
             if usingLayeredSampler {
                 layeredSampler.setPitchBend(pitchBend)
+            } else if usingEffectSampler {
+                effectSampler.setPitchBend(pitchBend)
             } else {
                 bundledSampler.setPitchBend(pitchBend)
             }
         case .user:
             userVoicePool?.setPitchBend(pitchBend)
+        }
+    }
+
+    private func selectedPadIgnoresSustain() -> Bool {
+        switch selectedInstrument {
+        case .bundled(let pad):
+            return pad.articulation?.ignoresSustainPedal ?? false
+        case .user:
+            return false
         }
     }
 }

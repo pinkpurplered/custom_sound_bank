@@ -1,16 +1,17 @@
 # Third-Party Notices
 
-## YDP Grand Piano SoundFont
+## Grand Piano SoundFont
 
-The default **Grand** piano uses **YDP Grand Piano** (2016-08-04) from the FreePats project.
-It is built from Zenph Studios Yamaha Disklavier Pro multisamples.
+**Grand Piano** uses **Fazioli F308** samples by Dore Mark, converted to SF2 for the Soundfonts 4U
+mirror collection (Pianobook-origin samples). The SF-tailored conversion is used for correct filter
+response on `AVAudioUnitSampler`.
 
-- Project: https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html
-- License: Creative Commons Attribution 3.0
+- Source: https://huggingface.co/datasets/projectlosangeles/soundfonts4u
+- Original: Pianobook / Dore Mark — The Experience Fazioli F308
 
 ## GeneralUser GS SoundFont
 
-Other bundled instruments use **GeneralUser GS v1.471** by S. Christian Collins.
+Other bundled GM instruments use **GeneralUser GS v1.471** by S. Christian Collins.
 
 - Project: https://github.com/mrbumpy409/GeneralUser-GS
 - License: see `CustomSoundBank/Resources/SoundBanks/LICENSE.txt`

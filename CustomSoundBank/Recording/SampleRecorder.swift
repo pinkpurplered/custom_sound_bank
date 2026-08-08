@@ -29,10 +29,9 @@ final class SampleRecorder: NSObject, ObservableObject {
     weak var audioCoordinator: AudioSessionCoordinator?
 
     private var recorder: AVAudioRecorder?
-    private var previewPlayer: AVAudioPlayer?
+    private let previewPlayer = RecordingPreviewPlayer()
     private var previewGeneration = 0
     private var meterTimer: Timer?
-    private var playbackStopTimer: Timer?
     private let maxDuration: TimeInterval = 10
 
     private let recordingSettings: [String: Any] = [
@@ -100,20 +99,12 @@ final class SampleRecorder: NSObject, ObservableObject {
         let generation = previewGeneration
 
         audioCoordinator?.suspendPerformanceAudio()
-        try configureSessionForPlayback()
-
-        let player = try AVAudioPlayer(contentsOf: recordedURL)
-        player.prepareToPlay()
 
         let start = min(max(trimStart, 0), duration)
         let end = min(max(trimEnd, start + 0.05), max(duration, 0.1))
-        player.currentTime = start
-        previewPlayer = player
         state = .playingBack
-        player.play()
 
-        let previewLength = end - start
-        playbackStopTimer = Timer.scheduledTimer(withTimeInterval: previewLength, repeats: false) { [weak self] _ in
+        try previewPlayer.play(url: recordedURL, startTime: start, endTime: end) { [weak self] in
             Task { @MainActor in
                 guard let self, self.previewGeneration == generation else { return }
                 self.finishPreview()
@@ -122,22 +113,22 @@ final class SampleRecorder: NSObject, ObservableObject {
     }
 
     func stopPreview() {
-        playbackStopTimer?.invalidate()
-        playbackStopTimer = nil
-        if let player = previewPlayer {
-            player.delegate = nil
-            player.stop()
-        }
-        previewPlayer = nil
+        previewPlayer.stop()
         if state == .playingBack {
             state = recordedURL == nil ? .idle : .recorded
         }
     }
 
+    func restoreRecordingSessionIfNeeded() {
+        guard recordedURL != nil, state != .recording else { return }
+        try? configureSessionForRecording()
+    }
+
     private func finishPreview() {
         guard state == .playingBack else { return }
         stopPreview()
-        audioCoordinator?.resumePerformanceAudio()
+        // Stay in the record flow; do not restart the performance engine yet.
+        try? configureSessionForRecording()
     }
 
     private func configureSessionForRecording() throws {
@@ -149,13 +140,6 @@ final class SampleRecorder: NSObject, ObservableObject {
         if let builtInMic = session.availableInputs?.first(where: { $0.portType == .builtInMic }) {
             try session.setPreferredInput(builtInMic)
         }
-    }
-
-    private func configureSessionForPlayback() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
-        try session.setPreferredSampleRate(44_100)
-        try session.setActive(true)
     }
 
     private func startRecording() throws {
@@ -197,4 +181,14 @@ final class SampleRecorder: NSObject, ObservableObject {
             stopRecording()
         }
     }
+
+    #if DEBUG
+    func loadTestRecording(url: URL, duration: TimeInterval) {
+        recordedURL = url
+        self.duration = duration
+        trimStart = 0
+        trimEnd = duration
+        state = .recorded
+    }
+    #endif
 }
